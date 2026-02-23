@@ -1,6 +1,11 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/cn';
 import { useHasEnteredGoal } from '@/context/HasEnteredGoalContext';
+
+interface NavSubItem {
+  to: string;
+  label: string;
+}
 
 interface NavItem {
   to: string;
@@ -9,6 +14,8 @@ interface NavItem {
   badge?: number;
   /** Only show when user has entered a goal */
   showWhenHasGoal?: boolean;
+  /** Sub-navigation (e.g. Analytics → Overview, Active Goal) */
+  children?: NavSubItem[];
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -77,6 +84,19 @@ const NAV_ITEMS: NavItem[] = [
       </svg>
     ),
   },
+  {
+    to: '/analytics',
+    label: 'Analytics',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+      </svg>
+    ),
+    children: [
+      { to: '/analytics', label: 'Overview' },
+      { to: '/analytics/active-goal', label: 'Active Goal' },
+    ],
+  },
 ];
 
 interface SideNavProps {
@@ -85,6 +105,8 @@ interface SideNavProps {
 
 export function SideNav({ collapsed = false }: SideNavProps) {
   const { hasEnteredGoal } = useHasEnteredGoal();
+  const location = useLocation();
+  const pathname = location.pathname;
   const navItems = NAV_ITEMS.filter((item) => !item.showWhenHasGoal || hasEnteredGoal);
 
   return (
@@ -105,32 +127,83 @@ export function SideNav({ collapsed = false }: SideNavProps) {
       {/* Navigation */}
       <nav className="flex-1 py-3 overflow-y-auto">
         <ul className="flex flex-col gap-0.5 px-2">
-          {navItems.map(({ to, label, icon, badge }) => (
-            <li key={to}>
-              <NavLink
-                to={to}
-                end={to === '/dashboard'}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-sidebar-active text-white'
-                      : 'text-slate-300 hover:bg-sidebar-hover hover:text-white',
-                    collapsed && 'justify-center px-0',
-                  )
-                }
-                title={collapsed ? label : undefined}
-              >
-                {icon}
-                {!collapsed && label}
-                {!collapsed && badge != null && (
-                  <span className="ml-auto bg-white/20 text-xs font-semibold px-2 py-0.5 rounded-full">
-                    {badge}
-                  </span>
-                )}
-              </NavLink>
-            </li>
-          ))}
+          {navItems.map(({ to, label, icon, badge, children }) => {
+            const isAnalyticsGroup = label === 'Analytics' && children?.length;
+            const isAnalyticsActive = pathname === '/analytics' || pathname === '/analytics/active-goal';
+
+            if (isAnalyticsGroup && children) {
+              return (
+                <li key={to}>
+                  <div
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-t-md',
+                      isAnalyticsActive ? 'bg-sidebar-active text-white' : 'text-slate-300',
+                      collapsed && 'justify-center px-0',
+                    )}
+                  >
+                    {icon}
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1">{label}</span>
+                        <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+                        </svg>
+                      </>
+                    )}
+                  </div>
+                  {!collapsed && (
+                    <ul className="rounded-b-md overflow-hidden">
+                      {children.map((sub) => (
+                        <li key={sub.to}>
+                          <NavLink
+                            to={sub.to}
+                            end={sub.to === '/analytics'}
+                            className={({ isActive }) =>
+                              cn(
+                                'flex items-center gap-2 pl-11 pr-3 py-2 text-sm transition-colors block',
+                                isActive
+                                  ? 'bg-sidebar-active text-white'
+                                  : 'text-slate-400 hover:bg-sidebar-hover hover:text-white',
+                              )
+                            }
+                          >
+                            {sub.label}
+                          </NavLink>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            }
+
+            return (
+              <li key={to}>
+                <NavLink
+                  to={to}
+                  end={to === '/dashboard'}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-sidebar-active text-white'
+                        : 'text-slate-300 hover:bg-sidebar-hover hover:text-white',
+                      collapsed && 'justify-center px-0',
+                    )
+                  }
+                  title={collapsed ? label : undefined}
+                >
+                  {icon}
+                  {!collapsed && label}
+                  {!collapsed && badge != null && (
+                    <span className="ml-auto bg-white/20 text-xs font-semibold px-2 py-0.5 rounded-full">
+                      {badge}
+                    </span>
+                  )}
+                </NavLink>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 

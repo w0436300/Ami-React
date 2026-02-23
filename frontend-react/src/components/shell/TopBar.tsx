@@ -7,6 +7,8 @@ const pageTitles: Record<string, string> = {
   '/knowledge': 'Knowledge',
   '/skill-gap': 'Skill Gap',
   '/profile': 'Profile',
+  '/analytics': 'Analytics',
+  '/analytics/active-goal': 'Analytics',
   '/example/refine-goal': 'API Example',
 };
 

@@ -11,6 +11,7 @@ import { LearningSessionPage } from '@/pages/LearningSessionPage';
 import { KnowledgePage } from '@/pages/KnowledgePage';
 import { SkillGapPage } from '@/pages/SkillGapPage';
 import { RefineGoalExamplePage } from '@/pages/RefineGoalExamplePage';
+import { AnalyticsPage } from '@/pages/AnalyticsPage';
 
 export const router = createBrowserRouter([
   /* Landing / Onboarding — full-page, no sidebar */
@@ -37,6 +38,8 @@ export const router = createBrowserRouter([
       { path: '/learning-path', element: <LearningPathPage /> },
       { path: '/knowledge', element: <KnowledgePage /> },
       { path: '/skill-gap', element: <SkillGapPage /> },
+      { path: '/analytics', element: <AnalyticsPage /> },
+      { path: '/analytics/active-goal', element: <AnalyticsPage /> },
       { path: '/example/refine-goal', element: <RefineGoalExamplePage /> },
     ],
   },
