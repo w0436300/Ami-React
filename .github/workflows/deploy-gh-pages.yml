@@ -1,11 +1,9 @@
-# 将 frontend-react 构建并部署到 GitHub Pages
-# 仓库需在 Settings → Pages 中选择 "GitHub Actions" 作为 Source
-# 仅手动触发：不监听 main，在 Actions 里选你的 branch 再 Run workflow 即可发布该分支
+
 
 name: Deploy to GitHub Pages
 
 on:
-  workflow_dispatch:  # 只手动运行，不随 push 触发；运行时可选择任意分支（如你的当前分支）
+  workflow_dispatch: 
 
 permissions:
   contents: read
