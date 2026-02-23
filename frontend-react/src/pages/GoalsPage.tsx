@@ -73,6 +73,7 @@ export function GoalsPage() {
     };
     setGoals((prev) => [...prev, newGoal]);
     handleCloseAddGoalModal();
+    navigate('/skill-gap');
   };
 
   return (

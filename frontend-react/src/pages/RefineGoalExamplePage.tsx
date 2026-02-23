@@ -39,15 +39,15 @@ export function RefineGoalExamplePage() {
 
   return (
     <div className="max-w-xl space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-800">Refine Learning Goal</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Calls <code className="text-xs bg-slate-100 px-1 py-0.5 rounded">POST /refine-learning-goal</code> and
-          displays the refined goal.
+      <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <h2 className="text-xl font-semibold text-slate-900">Refine Learning Goal</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          Calls <code className="text-xs bg-slate-100 px-1 py-0.5 rounded text-slate-800">POST /refine-learning-goal</code> and
+          displays the refined goal. Use this page to test the API; onboarding &quot;AI Refinement&quot; currently uses mock data.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/5 space-y-4">
         <InputField
           label="Learning goal"
           placeholder="e.g. Learn Python for data science"
@@ -66,7 +66,7 @@ export function RefineGoalExamplePage() {
           rows={2}
         />
         <div className="flex gap-3">
-          <Button type="submit" loading={isPending}>
+          <Button type="submit" loading={isPending} className="!bg-primary-600 hover:!bg-primary-700 !text-white">
             Refine goal
           </Button>
           <Button
@@ -81,14 +81,15 @@ export function RefineGoalExamplePage() {
       </form>
 
       {isError && (
-        <div className="bg-danger-50 border border-danger-500/20 rounded-lg p-4 text-sm text-danger-700">
-          <strong>Error:</strong> {error instanceof Error ? error.message : String(error)}
+        <div className="rounded-lg border border-danger-500/30 bg-danger-50 p-4 text-sm text-slate-800">
+          <strong className="text-danger-700">Error:</strong>{' '}
+          <span className="text-slate-700">{error instanceof Error ? error.message : String(error)}</span>
         </div>
       )}
 
       {data !== undefined && !isError && (
-        <div className="bg-success-50 border border-success-500/20 rounded-lg p-4">
-          <strong className="text-success-700 text-sm">Refined goal:</strong>
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm border-l-4 border-l-primary-500">
+          <p className="text-sm font-semibold text-slate-900">Refined goal</p>
           <pre className="whitespace-pre-wrap mt-2 text-sm text-slate-700">{formatResponse(data)}</pre>
         </div>
       )}

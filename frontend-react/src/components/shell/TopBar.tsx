@@ -4,7 +4,6 @@ const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/goals': 'Goals',
   '/learning-path': 'Learning Path',
-  '/knowledge': 'Knowledge',
   '/skill-gap': 'Skill Gap',
   '/profile': 'Profile',
   '/analytics': 'Analytics',

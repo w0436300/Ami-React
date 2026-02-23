@@ -8,7 +8,6 @@ import { GoalsPage } from '@/pages/GoalsPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { LearningPathPage } from '@/pages/LearningPathPage';
 import { LearningSessionPage } from '@/pages/LearningSessionPage';
-import { KnowledgePage } from '@/pages/KnowledgePage';
 import { SkillGapPage } from '@/pages/SkillGapPage';
 import { RefineGoalExamplePage } from '@/pages/RefineGoalExamplePage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
@@ -40,7 +39,6 @@ export const router = createBrowserRouter(
       { path: '/goals', element: <GoalsPage /> },
       { path: '/profile', element: <ProfilePage /> },
       { path: '/learning-path', element: <LearningPathPage /> },
-      { path: '/knowledge', element: <KnowledgePage /> },
       { path: '/skill-gap', element: <SkillGapPage /> },
       { path: '/analytics', element: <AnalyticsPage /> },
       { path: '/analytics/active-goal', element: <AnalyticsPage /> },

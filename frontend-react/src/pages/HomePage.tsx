@@ -4,8 +4,6 @@ import { Button } from '@/components/ui';
 const quickLinks = [
   { to: '/goals', label: 'Set Learning Goals', description: 'Define and refine what you want to learn.' },
   { to: '/learning-path', label: 'Learning Path', description: 'View your personalized study schedule.' },
-  { to: '/knowledge', label: 'Knowledge Check', description: 'Test your understanding with quizzes.' },
-  { to: '/skill-gap', label: 'Skill Gap Analysis', description: 'Identify areas that need improvement.' },
 ];
 
 export function HomePage() {

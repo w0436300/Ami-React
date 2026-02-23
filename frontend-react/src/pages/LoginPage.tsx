@@ -1,10 +1,20 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button, InputField } from '@/components/ui';
 
+const DEMO_EMAIL = 'demo@genmentor.ai';
+const DEMO_PASSWORD = 'demo';
+
 export function LoginPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  const loginWithDemo = () => {
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    navigate('/dashboard');
+  };
 
   return (
     <div className="space-y-6">
@@ -40,6 +50,14 @@ export function LoginPage() {
         />
         <Button type="submit" className="w-full">
           Sign in
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full"
+          onClick={loginWithDemo}
+        >
+          Use demo account
         </Button>
       </form>
 
