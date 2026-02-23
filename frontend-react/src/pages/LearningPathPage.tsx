@@ -97,7 +97,7 @@ export function LearningPathPage() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    className="!bg-slate-800 !text-white hover:!bg-slate-700"
+                    className="!bg-primary-600 !text-white hover:!bg-primary-700"
                     onClick={() => handleStartSession(session.id)}
                   >
                     <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 24 24">

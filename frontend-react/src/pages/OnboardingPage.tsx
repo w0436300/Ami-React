@@ -183,7 +183,7 @@ export function OnboardingPage() {
             onClick={handleBeginLearning}
             loading={isSubmitting}
             disabled={pageState === 'idle'}
-            className="w-full sm:w-auto !bg-slate-900 hover:!bg-slate-800 !text-white px-10"
+            className="w-full sm:w-auto !bg-primary-600 hover:!bg-primary-700 !text-white px-10"
           >
             Begin Learning
           </Button>

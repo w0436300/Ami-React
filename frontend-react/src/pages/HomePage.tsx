@@ -12,13 +12,13 @@ export function HomePage() {
   return (
     <div className="space-y-8">
       {/* Welcome banner */}
-      <div className="bg-gradient-to-br from-primary-600 to-primary-800 rounded-xl p-8 text-white">
+      <div className="bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl p-8 text-white">
         <h2 className="text-2xl font-bold">Welcome back!</h2>
         <p className="mt-2 text-primary-100 max-w-lg">
           Pick up where you left off, or start something new. Ami adapts your learning path based on your progress.
         </p>
         <Link to="/goals">
-          <Button variant="secondary" className="mt-5 !text-primary-700">
+          <Button variant="secondary" className="mt-5 !text-primary-800 !bg-white/90 hover:!bg-white">
             Continue Learning
           </Button>
         </Link>

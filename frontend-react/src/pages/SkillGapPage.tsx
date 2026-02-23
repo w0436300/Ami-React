@@ -172,7 +172,7 @@ function SkillCard({
           className={cn(
             'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full',
             gap >= 2
-              ? 'bg-primary-100 text-primary-700'
+              ? 'bg-slate-100 text-slate-700'
               : 'bg-slate-100 text-slate-600',
           )}
         >
@@ -324,7 +324,7 @@ export function SkillGapPage() {
           variant="secondary"
           size="lg"
           disabled={isSubmitting}
-          className="!bg-slate-800 !text-white hover:!bg-slate-700 px-8"
+          className="!bg-primary-600 !text-white hover:!bg-primary-700 px-8"
           onClick={() => navigate('/learning-session')}
         >
           Skip

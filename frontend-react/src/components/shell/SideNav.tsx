@@ -112,16 +112,16 @@ export function SideNav({ collapsed = false }: SideNavProps) {
   return (
     <aside
       className={cn(
-        'fixed top-0 left-0 h-screen bg-sidebar text-white flex flex-col z-30 transition-all duration-200',
+        'fixed top-0 left-0 h-screen bg-sidebar flex flex-col z-30 transition-all duration-200 text-slate-800',
         collapsed ? 'w-16' : 'w-sidebar',
       )}
     >
       {/* Brand */}
-      <div className="flex items-center gap-2.5 px-4 h-topbar shrink-0 border-b border-white/10">
-        <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center font-bold text-sm">
+      <div className="flex items-center gap-2.5 px-4 h-topbar shrink-0 border-b border-slate-200">
+        <div className="w-8 h-8 rounded-lg bg-primary-500 text-white flex items-center justify-center font-bold text-sm">
           A
         </div>
-        {!collapsed && <span className="text-lg font-semibold tracking-tight">Ami</span>}
+        {!collapsed && <span className="text-lg font-semibold tracking-tight text-slate-900">Ami</span>}
       </div>
 
       {/* Navigation */}
@@ -137,7 +137,7 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                   <div
                     className={cn(
                       'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-t-md',
-                      isAnalyticsActive ? 'bg-sidebar-active text-white' : 'text-slate-300',
+                      isAnalyticsActive ? 'bg-sidebar-active text-slate-900' : 'text-slate-600',
                       collapsed && 'justify-center px-0',
                     )}
                   >
@@ -162,8 +162,8 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                               cn(
                                 'flex items-center gap-2 pl-11 pr-3 py-2 text-sm transition-colors block',
                                 isActive
-                                  ? 'bg-sidebar-active text-white'
-                                  : 'text-slate-400 hover:bg-sidebar-hover hover:text-white',
+                                  ? 'bg-sidebar-active text-slate-900'
+                                  : 'text-slate-600 hover:bg-sidebar-hover hover:text-slate-800',
                               )
                             }
                           >
@@ -186,8 +186,8 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                     cn(
                       'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
                       isActive
-                        ? 'bg-sidebar-active text-white'
-                        : 'text-slate-300 hover:bg-sidebar-hover hover:text-white',
+                        ? 'bg-sidebar-active text-slate-900'
+                        : 'text-slate-600 hover:bg-sidebar-hover hover:text-slate-800',
                       collapsed && 'justify-center px-0',
                     )
                   }
@@ -196,7 +196,7 @@ export function SideNav({ collapsed = false }: SideNavProps) {
                   {icon}
                   {!collapsed && label}
                   {!collapsed && badge != null && (
-                    <span className="ml-auto bg-white/20 text-xs font-semibold px-2 py-0.5 rounded-full">
+                    <span className="ml-auto bg-slate-200 text-slate-700 text-xs font-semibold px-2 py-0.5 rounded-full">
                       {badge}
                     </span>
                   )}
@@ -208,15 +208,15 @@ export function SideNav({ collapsed = false }: SideNavProps) {
       </nav>
 
       {/* Bottom: Example page link */}
-      <div className="px-2 pb-3 mt-auto border-t border-white/10 pt-3">
+      <div className="px-2 pb-3 mt-auto border-t border-slate-200 pt-3">
         <NavLink
           to="/example/refine-goal"
           className={({ isActive }) =>
             cn(
               'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
               isActive
-                ? 'bg-sidebar-active text-white'
-                : 'text-slate-400 hover:bg-sidebar-hover hover:text-white',
+                ? 'bg-sidebar-active text-slate-900'
+                : 'text-slate-600 hover:bg-sidebar-hover hover:text-slate-800',
               collapsed && 'justify-center px-0',
             )
           }

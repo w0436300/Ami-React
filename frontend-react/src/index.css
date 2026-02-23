@@ -4,12 +4,12 @@
 
 @layer base {
   body {
-    @apply font-sans text-slate-800 bg-surface antialiased;
+    @apply font-sans text-slate-700 bg-surface antialiased;
     margin: 0;
   }
 
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+  ::-webkit-scrollbar-thumb { @apply bg-primary-300 rounded; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-primary-400; }
 }

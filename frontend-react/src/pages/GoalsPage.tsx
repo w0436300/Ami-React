@@ -77,33 +77,37 @@ export function GoalsPage() {
 
   return (
     <div className="max-w-4xl space-y-8">
-      {/* Header */}
-      <p className="text-base font-medium text-slate-800">
-        Current Goal: <span className="text-slate-900">{CURRENT_GOAL_LABEL}</span>
-      </p>
-
-      {/* Currently active — dark card */}
-      <section className="bg-slate-800 rounded-xl p-6 text-white">
-        <h2 className="text-xl font-bold tracking-tight">{ACTIVE_GOAL.title}</h2>
-        <p className="mt-1 text-sm text-slate-300">
-          Started {ACTIVE_GOAL.startedDate} · Goal: {ACTIVE_GOAL.goalDetail}
+      {/* Header — high contrast, accessible */}
+      <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <p className="text-base font-medium text-slate-600">
+          Current Goal: <span className="font-semibold text-slate-900">{CURRENT_GOAL_LABEL}</span>
         </p>
+      </div>
+
+      {/* Currently active — light card with dark text for WCAG contrast */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
+        <div className="border-l-4 border-primary-600 pl-4">
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">{ACTIVE_GOAL.title}</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Started {ACTIVE_GOAL.startedDate} · Goal: {ACTIVE_GOAL.goalDetail}
+          </p>
+        </div>
         <div className="mt-4 flex items-center gap-3">
-          <div className="flex-1 h-2 rounded-full bg-slate-600 overflow-hidden">
+          <div className="flex-1 h-2 rounded-full bg-slate-200 overflow-hidden">
             <div
-              className="h-full rounded-full bg-white transition-all duration-300"
+              className="h-full rounded-full bg-primary-600 transition-all duration-300"
               style={{ width: `${ACTIVE_GOAL.progressPct}%` }}
             />
           </div>
-          <span className="text-sm font-semibold shrink-0 w-10 text-right">{ACTIVE_GOAL.progressPct}%</span>
+          <span className="text-sm font-semibold shrink-0 w-10 text-right text-slate-900">{ACTIVE_GOAL.progressPct}%</span>
         </div>
-        <p className="mt-3 text-sm text-slate-300">
+        <p className="mt-3 text-sm text-slate-600">
           Next up: {ACTIVE_GOAL.nextUp} · Est. {ACTIVE_GOAL.nextUpEst}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Button
             size="md"
-            className="!bg-white !text-slate-900 hover:!bg-slate-100"
+            className="!bg-primary-800 !text-white hover:!bg-primary-900"
             onClick={() => navigate('/learning-session')}
           >
             <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 24 24">
@@ -114,7 +118,7 @@ export function GoalsPage() {
           <Button
             variant="secondary"
             size="md"
-            className="!bg-slate-600 !text-white !border-0 hover:!bg-slate-500"
+            className="!border-primary-600 !text-primary-700 hover:!bg-primary-50 hover:!border-primary-700"
             onClick={() => navigate('/learning-path')}
           >
             View Full Path
@@ -122,7 +126,7 @@ export function GoalsPage() {
           <Button
             variant="secondary"
             size="md"
-            className="!bg-slate-600 !text-white !border-0 hover:!bg-slate-500"
+            className="!border-primary-600 !text-primary-700 hover:!bg-primary-50 hover:!border-primary-700"
             onClick={() => navigate('/skill-gap')}
           >
             Update Skill Assessment
@@ -158,7 +162,7 @@ export function GoalsPage() {
               </div>
               <Button
                 size="sm"
-                className="mt-4 w-full !bg-slate-800 hover:!bg-slate-700 !text-white"
+                className="mt-4 w-full !bg-primary-600 hover:!bg-primary-700 !text-white"
                 onClick={() => navigate('/learning-session')}
               >
                 Continue Learning
@@ -203,7 +207,7 @@ export function GoalsPage() {
           <div className="flex justify-end">
             <Button
               size="md"
-              className="!bg-slate-800 hover:!bg-slate-700 !text-white"
+              className="!bg-primary-600 hover:!bg-primary-700 !text-white"
               onClick={handleGenerate}
             >
               Generate

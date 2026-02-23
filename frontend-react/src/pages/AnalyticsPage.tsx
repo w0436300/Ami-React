@@ -71,7 +71,7 @@ function AnalyticsOverview() {
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
               activeTab === 'learning'
-                ? 'border-slate-900 text-slate-900'
+                ? 'border-primary-600 text-primary-700'
                 : 'border-transparent text-slate-500 hover:text-slate-700',
             )}
           >
@@ -83,7 +83,7 @@ function AnalyticsOverview() {
             className={cn(
               'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
               activeTab === 'goals'
-                ? 'border-slate-900 text-slate-900'
+                ? 'border-primary-600 text-primary-700'
                 : 'border-transparent text-slate-500 hover:text-slate-700',
             )}
           >
@@ -98,7 +98,7 @@ function AnalyticsOverview() {
               onClick={() => setTimeRange(opt)}
               className={cn(
                 'text-sm font-medium px-3 py-1.5 rounded-md transition-colors',
-                timeRange === opt ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                timeRange === opt ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
               )}
             >
               {timeRange === opt ? '✔ ' : ''}{opt}
@@ -127,7 +127,7 @@ function AnalyticsOverview() {
             <div className="h-2 bg-slate-200 rounded w-3/5" />
           </div>
           <div className="mt-4 flex justify-end">
-            <Button size="sm" className="!bg-slate-800 hover:!bg-slate-700 !text-white" onClick={() => {}}>
+            <Button size="sm" className="!bg-primary-600 hover:!bg-primary-700 !text-white" onClick={() => {}}>
               Continue Learning
             </Button>
           </div>
@@ -242,7 +242,7 @@ function AnalyticsActiveGoal() {
                 onClick={() => setTimeRange(opt)}
                 className={cn(
                   'text-sm font-medium px-3 py-1.5 rounded-md transition-colors',
-                  timeRange === opt ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
+                  timeRange === opt ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
                 )}
               >
                 {timeRange === opt ? '✔ ' : ''}{opt}
@@ -272,7 +272,7 @@ function AnalyticsActiveGoal() {
             <div className="h-2 bg-slate-200 rounded w-3/5" />
           </div>
           <div className="mt-4 flex justify-end">
-            <Button size="sm" className="!bg-slate-800 hover:!bg-slate-700 !text-white" onClick={() => navigate('/learning-session')}>
+            <Button size="sm" className="!bg-primary-600 hover:!bg-primary-700 !text-white" onClick={() => navigate('/learning-session')}>
               Continue Learning
             </Button>
           </div>
@@ -306,9 +306,9 @@ function AnalyticsActiveGoal() {
               <span
                 className={cn(
                   'text-xs font-medium px-2 py-0.5 rounded-full w-fit',
-                  skill.status === 'In progress' && 'bg-green-100 text-green-800',
+                  skill.status === 'In progress' && 'bg-slate-100 text-slate-700',
                   skill.status === 'Not Started' && 'bg-slate-100 text-slate-600',
-                  skill.status === 'Completed' && 'bg-primary-100 text-primary-800',
+                  skill.status === 'Completed' && 'bg-slate-200 text-slate-800',
                 )}
               >
                 {skill.status}
