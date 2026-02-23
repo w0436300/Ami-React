@@ -122,7 +122,7 @@ export function LearningSessionPage() {
 
   const [moduleIndex, setModuleIndex] = useState(0);
   const [chatInput, setChatInput] = useState('');
-  const [messages, setMessages] = useState<{ from: 'mentor' | 'user'; text: string; time: string }>([
+  const [messages, setMessages] = useState<{ from: 'mentor' | 'user'; text: string; time: string }[]>([
     { from: 'mentor', text: WELCOME_MSG(session.index), time: 'just now' },
   ]);
   const chatEndRef = useRef<HTMLDivElement>(null);
