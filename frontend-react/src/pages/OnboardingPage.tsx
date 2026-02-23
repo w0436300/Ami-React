@@ -326,37 +326,29 @@ export function OnboardingPage() {
         </section>
         )}
 
-        {/* ── State indicator (dev aid — remove in production) ── */}
-        <div className="max-w-2xl mx-auto px-4 pb-4">
-          <p className="text-xs text-slate-400">
-            Current state: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">{pageState}</code>
-          </p>
-        </div>
-      </div>
-
-      {/* ── Bottom action bar：固定间距，不随滚动移动 ── */}
-      <section className="shrink-0 pt-6 pb-8 px-4 bg-white border-t border-slate-100">
-        <div className="max-w-2xl w-full mx-auto flex flex-col sm:flex-row items-center gap-4">
-          <Button
-            size="lg"
-            onClick={handleBeginLearning}
-            loading={isSubmitting}
-            disabled={pageState === 'idle'}
-            className="w-full sm:w-auto !bg-primary-600 hover:!bg-primary-700 !text-white px-10"
-          >
-            Begin Learning
-          </Button>
-
-          <div className="flex gap-3">
-            <Button variant="secondary" size="md" disabled={isSubmitting}>
-              Upload Your Resume (Optional)
+        {/* ── Bottom action bar：Begin Learning 居中，其余两按钮在下方 ── */}
+        <section className="max-w-2xl w-full mx-auto px-4 pt-4 pb-8 border-t border-slate-100 mt-3">
+          <div className="flex flex-col items-center gap-4">
+            <Button
+              size="lg"
+              onClick={handleBeginLearning}
+              loading={isSubmitting}
+              disabled={pageState === 'idle'}
+              className="w-full sm:w-auto !bg-primary-600 hover:!bg-primary-700 !text-white px-10"
+            >
+              Begin Learning
             </Button>
-            <Button variant="secondary" size="md" disabled={isSubmitting}>
-              Connect to your LinkedIn
-            </Button>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button variant="secondary" size="md" disabled={isSubmitting}>
+                Upload Your Resume (Optional)
+              </Button>
+              <Button variant="secondary" size="md" disabled={isSubmitting}>
+                Connect to your LinkedIn
+              </Button>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
