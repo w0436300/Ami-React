@@ -1,12 +1,12 @@
-# API Contract 文档
+# API Contract
 
-本文档基于当前 **Streamlit 前端**（`frontend/utils/request_api.py`、`frontend/utils/backend.py`）与 **FastAPI 后端**（`backend/main.py`、`backend/api_schemas.py`）整理，供 React 前端重建时对接使用。
+This document is derived from the current **Streamlit frontend** (`frontend/utils/request_api.py`, `frontend/utils/backend.py`) and **FastAPI backend** (`backend/main.py`, `backend/api_schemas.py`) for use when integrating the React frontend.
 
-**Base URL**: 由前端配置决定，例如 `http://localhost:8000/`（末尾建议带 `/`）。
+**Base URL**: Configured by the frontend (e.g. `http://localhost:8000/`; trailing slash recommended).
 
 ---
 
-## 1. 认证 (Auth)
+## 1. Auth
 
 ### 1.1 POST `/auth/register`
 
@@ -14,24 +14,24 @@
 - **Path**: `/auth/register`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `username` | string | ✅ | 至少 3 个字符 |
-| `password` | string | ✅ | 至少 6 个字符 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `username` | string | ✅ | At least 3 characters |
+| `password` | string | ✅ | At least 6 characters |
 
-示例：`{"username": "alice", "password": "secret123"}`
+Example: `{"username": "alice", "password": "secret123"}`
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "token": "<jwt>", "username": "alice" }
 ```
 
-**Response — 失败**  
-- `400`: `{"detail": "Username must be at least 3 characters"}` 或 `"Password must be at least 6 characters"`
+**Response — Error**  
+- `400`: `{"detail": "Username must be at least 3 characters"}` or `"Password must be at least 6 characters"`.
 - `409`: `{"detail": "Username already exists"}`
 
-**认证**: None  
-**前端错误处理**: 展示 `detail`；409 时提示用户名已存在并引导登录。
+**Auth**: None  
+**Frontend error handling**: Show `detail`; on 409 prompt that username already exists and guide to login.
 
 ---
 
@@ -41,24 +41,24 @@
 - **Path**: `/auth/login`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `username` | string | ✅ | 用户名 |
-| `password` | string | ✅ | 密码 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `username` | string | ✅ | Username |
+| `password` | string | ✅ | Password |
 
-示例：`{"username": "alice", "password": "secret123"}`
+Example:`{"username": "alice", "password": "secret123"}`
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "token": "<jwt>", "username": "alice" }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `401`: `{"detail": "Invalid username or password"}`
 
-**认证**: None  
-**Token 存放建议**: 登录/注册成功后把 `token` 存到 **memory + 持久化**（如 `localStorage` 的 `auth_token`），请求需认证的接口时放在 `Authorization: Bearer <token>`。  
-**前端错误处理**: 401 时提示账号或密码错误；网络错误时提示检查后端连接。
+**Auth**: None  
+**Token storage**: After login/register, store `token` in memory and persist (e.g. `localStorage.auth_token`); send `Authorization: Bearer <token>` for authenticated requests.  
+**Frontend error handling**: On 401 show invalid credentials; on network error prompt to check backend.
 
 ---
 
@@ -67,19 +67,19 @@
 - **Method**: `GET`
 - **Path**: `/auth/me`
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "username": "alice" }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `401`: `{"detail": "Invalid or expired token"}`
 
-**认证**: **JWT** — Header: `Authorization: Bearer <token>`  
-**Token 存放建议**: 同 1.2；401 时清除本地 token 并**跳转登录**。  
-**前端错误处理**: 401 → 清除 token、跳转登录；其他错误可重试一次再提示。
+**Auth**: **JWT** — Header: `Authorization: Bearer <token>`  
+**Token storage**: Same as 1.2; on 401 clear local token and **redirect to login**.  
+**Frontend error handling**: 401 → clear token, redirect to login; other errors may retry once then show message.
 
 ---
 
@@ -88,33 +88,33 @@
 - **Method**: `DELETE`
 - **Path**: `/auth/user`
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "ok": true }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `401`: `{"detail": "Invalid or expired token"}`
 - `404`: `{"detail": "User not found"}`
 
-**认证**: **JWT** — `Authorization: Bearer <token>`  
-**前端错误处理**: 成功后清除 token 并跳转登录/首页；401 同 1.3；404 提示用户不存在。
+**Auth**: **JWT** — `Authorization: Bearer <token>`  
+**Frontend error handling**: On success clear token and redirect to login/home; 401 same as 1.3; 404 prompt user not found.
 
 ---
 
-## 2. 配置与静态数据
+## 2. Config and static data
 
 ### 2.1 GET `/config`
 
 - **Method**: `GET`
 - **Path**: `/config`
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
-返回应用配置对象，包含但不限于：
+**Response — Success (200)**  
+Returns app config object, including but not limited to:
 
 - `skill_levels`: string[]
 - `default_session_count`: number
@@ -127,10 +127,10 @@
 - `quiz_mix_by_proficiency`: Record<string, QuizMix>
 - `fslsm_thresholds`: Record<string, FslsmDimensionConfig>
 
-**Response — 失败**: 无（当前实现不返回错误码）
+**Response — Error**: None (current implementation does not return error codes)
 
-**认证**: None  
-**前端错误处理**: 可缓存到内存/Context；失败时使用本地默认配置并可选提示“部分配置加载失败”。
+**Auth**: None  
+**Frontend error handling**: Cache in memory/context; on failure use local defaults and optionally show "config load failed".
 
 ---
 
@@ -139,9 +139,9 @@
 - **Method**: `GET`
 - **Path**: `/personas`
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 {
   "personas": {
@@ -151,8 +151,8 @@
 }
 ```
 
-**认证**: None  
-**前端错误处理**: 失败时使用前端内置的 PERSONAS 兜底（与当前 Streamlit 一致）。
+**Auth**: None  
+**Frontend error handling**: On failure use built-in PERSONAS fallback (same as current Streamlit).
 
 ---
 
@@ -161,21 +161,21 @@
 - **Method**: `GET`
 - **Path**: `/list-llm-models`
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "models": [ { "model_name": "...", "model_provider": "..." } ] }
 ```
 
-**Response — 失败**: `500` 时 `{"detail": "..."}`
+**Response — Error**: On `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 失败时返回空数组并可选提示。
+**Auth**: None  
+**Frontend error handling**: On failure return empty array and optionally show message.
 
 ---
 
-## 3. 用户状态 (User State)
+## 3. User state
 
 ### 3.1 GET `/user-state/{user_id}`
 
@@ -183,18 +183,18 @@
 - **Path**: `/user-state/{user_id}`  
 - **Path params**: `user_id`: string
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "state": { "goals": [...], "session_learning_times": {...}, "learned_skills_history": {...}, "document_caches": {...}, ... } }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `404`: `{"detail": "No state found for this user_id"}`
 
-**认证**: None（当前前端未在请求头带 token，按业务需要可改为 JWT 校验 user_id）  
-**前端错误处理**: 404 视为新用户，初始化为空 state；网络错误可重试 1 次。
+**Auth**: None (frontend may add JWT for user_id if required).  
+**Frontend error handling**: Treat 404 as new user with empty state; retry once on network error.
 
 ---
 
@@ -205,19 +205,19 @@
 - **Path params**: `user_id`: string
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `state` | object | ✅ | 完整用户状态（goals、session_learning_times 等） |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `state` | object | ✅ | Full user state (goals, session_learning_times, etc.) |
 
-示例：`{"state": { "goals": [], "session_learning_times": {} } }`
+Example: `{"state": { "goals": [], "session_learning_times": {} } }`
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "ok": true }
 ```
 
-**认证**: None  
-**前端错误处理**: 失败时提示“保存失败”，可重试；避免频繁覆盖导致冲突时可做防抖/节流。
+**Auth**: None  
+**Frontend error handling**: On failure show "Save failed", allow retry; debounce/throttle to avoid overwrite conflicts.
 
 ---
 
@@ -227,19 +227,19 @@
 - **Path**: `/user-state/{user_id}`  
 - **Path params**: `user_id`: string
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "ok": true }
 ```
 
-**认证**: None  
-**前端错误处理**: 失败提示并可选重试；通常与“清除数据”等操作绑定。
+**Auth**: None  
+**Frontend error handling**: Show message on failure and optionally retry; often used with "clear data" actions.
 
 ---
 
-## 4. 事件 (Events)
+## 4. Events
 
 ### 4.1 POST `/events/log`
 
@@ -247,45 +247,45 @@
 - **Path**: `/events/log`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `user_id` | string | ✅ | 用户 ID |
-| `event_type` | string | ✅ | 事件类型 |
-| `payload` | object | 可选 | 默认 `{}` |
-| `ts` | string (ISO) | 可选 | 服务端可自动补全 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `user_id` | string | ✅ | User ID |
+| `event_type` | string | ✅ | Event type |
+| `payload` | object | optional | Default `{}` |
+| `ts` | string (ISO) | optional | Server may fill |
 
-示例：`{"user_id": "u1", "event_type": "session_start", "payload": {"goal_id": 1}}`
+Example: `{"user_id": "u1", "event_type": "session_start", "payload": {"goal_id": 1}}`
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "ok": true, "event_count": 42 }
 ```
 
-**认证**: None  
-**前端错误处理**: 可静默失败或有限重试，避免阻塞主流程；重要行为可本地队列后重试。
+**Auth**: None  
+**Frontend error handling**: Fail silently or retry sparingly to avoid blocking; queue important events for retry.
 
 ---
 
-## 5. 画像与同步 (Profile)
+## 5. Profile and sync
 
 ### 5.1 GET `/profile/{user_id}`
 
 - **Method**: `GET`
 - **Path**: `/profile/{user_id}?goal_id=<int>`  
 - **Path params**: `user_id`: string  
-- **Query**: `goal_id` (optional): number — 有则返回该 goal 的 profile，无则返回该用户所有 profiles。
+- **Query**: `goal_id` (optional): number — if present returns that goal's profile, else all profiles for the user.
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
-- 带 `goal_id`: `{"user_id": "...", "goal_id": 1, "learner_profile": { ... } }`
-- 不带 `goal_id`: `{"user_id": "...", "profiles": [ { "goal_id": 1, "learner_profile": {...} }, ... ] }`
+**Response — Success (200)**  
+- With `goal_id`: `{"user_id": "...", "goal_id": 1, "learner_profile": { ... } }`
+- Without `goal_id`: `{"user_id": "...", "profiles": [ { "goal_id": 1, "learner_profile": {...} }, ... ] }`
 
-**Response — 失败**  
-- `404`: `{"detail": "No profile found for this user_id"}` 或 `"No profile found for this user_id and goal_id"`
+**Response — Error**  
+- `404`: `{"detail": "No profile found for this user_id"}` or `"No profile found for this user_id and goal_id"`
 
-**认证**: None  
-**前端错误处理**: 404 视为无画像，引导创建；网络错误可重试。
+**Auth**: None  
+**Frontend error handling**: Treat 404 as no profile, guide to create; retry on network error.
 
 ---
 
@@ -296,20 +296,20 @@
 - **Path params**: `user_id`: string, `goal_id`: number
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | object | ✅ | 学习者画像对象 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | object | ✅ | Learner profile object |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "ok": true }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `400`: `{"detail": "learner_profile is required"}`
 
-**认证**: None  
-**前端错误处理**: 400 提示参数错误；网络错误提示保存失败并重试。
+**Auth**: None  
+**Frontend error handling**: 400 show invalid params; on network error show save failed and retry.
 
 ---
 
@@ -319,18 +319,18 @@
 - **Path**: `/sync-profile/{user_id}/{goal_id}`  
 - **Path params**: `user_id`: string, `goal_id`: number
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "learner_profile": { ... } }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `404`: `{"detail": "No profile found for this goal"}`
 
-**认证**: None  
-**前端错误处理**: 404 保留当前内存中的 profile；成功后用返回的 `learner_profile` 更新当前 goal。
+**Auth**: None  
+**Frontend error handling**: On 404 keep in-memory profile; on success update current goal with returned `learner_profile`.
 
 ---
 
@@ -340,31 +340,31 @@
 - **Path**: `/profile/auto-update`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `user_id` | string | ✅ | 用户 ID |
-| `goal_id` | number | 可选 | 默认 0 |
-| `model_provider` | string | 可选 | LLM 提供商 |
-| `model_name` | string | 可选 | 模型名 |
-| `learning_goal` | string | 条件 | 无 profile 时必填 |
-| `learner_information` | any | 条件 | 无 profile 时必填 |
-| `skill_gaps` | any | 条件 | 无 profile 时必填 |
-| `session_information` | object | 可选 | 会话元数据 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `user_id` | string | ✅ | User ID |
+| `goal_id` | number | optional | Default 0 |
+| `model_provider` | string | optional | LLM provider |
+| `model_name` | string | optional | Model name |
+| `learning_goal` | string | conditional | Required when no profile |
+| `learner_information` | any | conditional | Required when no profile |
+| `skill_gaps` | any | conditional | Required when no profile |
+| `session_information` | object | optional | Session metadata |
 
-**Response — 成功 (200)**  
-- 初始化: `{"ok": true, "mode": "initialized", "user_id": "...", "goal_id": 0, "event_count_used": 0, "learner_profile": {...}}`
-- 更新: `{"ok": true, "mode": "updated", ...}`
+**Response — Success (200)**  
+- Initialized: `{"ok": true, "mode": "initialized", "user_id": "...", "goal_id": 0, "event_count_used": 0, "learner_profile": {...}}`
+- Updated: `{"ok": true, "mode": "updated", ...}`
 
-**Response — 失败**  
+**Response — Error**  
 - `400`: `{"detail": "No profile found for this user_id. Provide learning_goal, learner_information, and skill_gaps to initialize."}`
 - `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 400 引导用户补全信息；500 提示并可选重试。
+**Auth**: None  
+**Frontend error handling**: 400 guide user to complete info; 500 show message and optionally retry.
 
 ---
 
-## 6. 行为指标与测验
+## 6. Behavioral metrics and quizzes
 
 ### 6.1 GET `/behavioral-metrics/{user_id}`
 
@@ -373,9 +373,9 @@
 - **Path params**: `user_id`: string  
 - **Query**: `goal_id` (optional): number
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 {
   "user_id": "...",
@@ -391,11 +391,11 @@
 }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `404`: `{"detail": "No state found for this user_id"}`
 
-**认证**: None  
-**前端错误处理**: 404 显示为空或默认值；网络错误可选重试。
+**Auth**: None  
+**Frontend error handling**: 404 show empty or defaults; optionally retry on network error.
 
 ---
 
@@ -406,9 +406,9 @@
 - **Path params**: `user_id`: string  
 - **Query**: `goal_id`: number, `session_index`: number
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 {
   "single_choice_count": 3,
@@ -419,12 +419,12 @@
 }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `400`: `{"detail": "Invalid session_index"}`  
-- `404`: `{"detail": "No state found for this user_id"}` 或 `"Goal not found"`
+- `404`: `{"detail": "No state found for this user_id"}` or `"Goal not found"`
 
-**认证**: None  
-**前端错误处理**: 失败时使用本地默认 quiz mix（如 3/1/1/1/0）。
+**Auth**: None  
+**Frontend error handling**: On failure use local default quiz mix (e.g. 3/1/1/1/0).
 
 ---
 
@@ -435,16 +435,16 @@
 - **Path params**: `user_id`: string  
 - **Query**: `goal_id`: number
 
-**Request body**: 无
+**Request body**: None
 
-**Response — 成功 (200)**  
-数组，每项：`{"session_id": "...", "is_mastered": false, "mastery_score": 65.0, "mastery_threshold": 70, "if_learned": false}`
+**Response — Success (200)**  
+Array of: `{"session_id": "...", "is_mastered": false, "mastery_score": 65.0, "mastery_threshold": 70, "if_learned": false}`
 
-**Response — 失败**  
-- `404`: `{"detail": "No state found for this user_id"}` 或 `"Goal not found"`
+**Response — Error**  
+- `404`: `{"detail": "No state found for this user_id"}` or `"Goal not found"`
 
-**认证**: None  
-**前端错误处理**: 404 显示为空列表；网络错误可重试。
+**Auth**: None  
+**Frontend error handling**: 404 show empty list; retry on network error.
 
 ---
 
@@ -454,14 +454,14 @@
 - **Path**: `/evaluate-mastery`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `user_id` | string | ✅ | 用户 ID |
-| `goal_id` | number | ✅ | 目标 ID |
-| `session_index` | number | ✅ | 会话索引 |
-| `quiz_answers` | object | ✅ | 键含 `single_choice_questions`, `multiple_choice_questions`, `true_false_questions`, `short_answer_questions`, `open_ended_questions`，值为答案数组 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `user_id` | string | ✅ | User ID |
+| `goal_id` | number | ✅ | Goal ID |
+| `session_index` | number | ✅ | Session index |
+| `quiz_answers` | object | ✅ | Keys include `single_choice_questions`, `multiple_choice_questions`, etc.; values are answer arrays |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 {
   "score_percentage": 75.0,
@@ -476,16 +476,16 @@
 }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `400`: `{"detail": "Invalid session_index"}`  
 - `404`: `{"detail": "No state found for this user_id"}` / `"Goal not found"` / `"No quiz data found for this session"}`
 
-**认证**: None  
-**前端错误处理**: 提交前校验 session 与 quiz 已加载；404 提示“请先完成内容加载”；可对 5xx 做一次重试。
+**Auth**: None  
+**Frontend error handling**: Validate session and quiz loaded before submit; 404 show "Load content first"; retry once on 5xx.
 
 ---
 
-## 7. 学习目标与技能缺口 (Onboarding / Skill Gap)
+## 7. Learning goal and skill gap (Onboarding / Skill Gap)
 
 ### 7.1 POST `/refine-learning-goal`
 
@@ -493,22 +493,22 @@
 - **Path**: `/refine-learning-goal`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learning_goal` | string | ✅ | 原始学习目标 |
-| `learner_information` | string | 可选 | 学习者信息（可 JSON 字符串） |
-| `model_provider` | string | 可选 | 同 BaseRequest |
-| `model_name` | string | 可选 | 同 BaseRequest |
-| `method_name` | string | 可选 | 默认 "genmentor" |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learning_goal` | string | ✅ | Raw learning goal |
+| `learner_information` | string | optional | Learner info (may be JSON string) |
+| `model_provider` | string | optional | Same as BaseRequest |
+| `model_name` | string | optional | Same as BaseRequest |
+| `method_name` | string | optional | Default "genmentor" |
 
-**Response — 成功 (200)**  
-后端可能直接返回**字符串**（精炼后的目标）或**对象**，取决于 LLM。前端建议兼容：若为对象则取 `refined_goal` 或首层文本字段。
+**Response — Success (200)**  
+Backend may return a **string** (refined goal) or **object** depending on LLM. Frontend should accept both; if object, use `refined_goal` or top-level text field.
 
-**Response — 失败**  
+**Response — Error**  
 - `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 超时较长（LLM），可显示 loading；失败提示并允许重试。
+**Auth**: None  
+**Frontend error handling**: Long timeout (LLM); show loading; on failure show message and allow retry.
 
 ---
 
@@ -518,23 +518,23 @@
 - **Path**: `/identify-skill-gap-with-info`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learning_goal` | string | ✅ | 学习目标 |
-| `learner_information` | string | ✅ | 学习者信息（可 JSON 字符串） |
-| `skill_requirements` | string | 可选 | 技能要求（可 JSON） |
-| `user_id` | string | 可选 | 前端可传用于存储 |
-| `goal_id` | number | 可选 | 同上 |
-| `model_provider` / `model_name` / `method_name` | 同 BaseRequest | 可选 | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learning_goal` | string | ✅ | Learning goal |
+| `learner_information` | string | ✅ | Learner info (may be JSON string) |
+| `skill_requirements` | string | optional | Skill requirements (may be JSON) |
+| `user_id` | string | optional | For storage if provided |
+| `goal_id` | number | optional | Same |
+| `model_provider` / `model_name` / `method_name` | Same as BaseRequest | optional | |
 
-**Response — 成功 (200)**  
-合并了 skill_gaps 与 skill_requirements 的对象，例如含 `skill_gaps`, `goal_assessment`, `retrieved_sources` 等（具体键以后端实现为准）。
+**Response — Success (200)**  
+Object merging skill_gaps and skill_requirements (e.g. `skill_gaps`, `goal_assessment`, `retrieved_sources`; keys depend on backend).
 
-**Response — 失败**  
+**Response — Error**  
 - `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 长耗时，loading + 超时提示；失败可重试。
+**Auth**: None  
+**Frontend error handling**: Long-running; show loading and timeout message; allow retry on failure.
 
 ---
 
@@ -544,20 +544,20 @@
 - **Path**: `/audit-skill-gap-bias`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `skill_gaps` | string | ✅ | JSON 字符串化的 skill_gaps 对象 |
-| `learner_information` | string | ✅ | 学习者信息 |
-| `model_provider` / `model_name` / `method_name` | 同 BaseRequest | 可选 | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `skill_gaps` | string | ✅ | JSON-stringified skill_gaps object |
+| `learner_information` | string | ✅ | Learner information |
+| `model_provider` / `model_name` / `method_name` | Same as BaseRequest | optional | |
 
-**Response — 成功 (200)**  
-审计结果对象（结构以后端为准）。
+**Response — Success (200)**  
+Audit result object (structure defined by backend).
 
-**Response — 失败**  
+**Response — Error**  
 - `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 失败提示并可选重试。
+**Auth**: None  
+**Frontend error handling**: Show message on failure and optionally retry.
 
 ---
 
@@ -567,25 +567,25 @@
 - **Path**: `/create-learner-profile-with-info`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learning_goal` | string | ✅ | 学习目标 |
-| `learner_information` | string | ✅ | 学习者信息（可 JSON 字符串） |
-| `skill_gaps` | string | ✅ | JSON 字符串化的 skill_gaps（或 `"[]"`） |
-| `user_id` | string | 可选 | 若提供则写入 store |
-| `goal_id` | number | 可选 | 同上 |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learning_goal` | string | ✅ | Learning goal |
+| `learner_information` | string | ✅ | Learner info (may be JSON string) |
+| `skill_gaps` | string | ✅ | JSON-stringified skill_gaps (or `"[]"`) |
+| `user_id` | string | optional | If provided, write to store |
+| `goal_id` | number | optional | Same |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "learner_profile": { ... } }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 失败提示并重试；成功后可跳转学习路径或下一步。
+**Auth**: None  
+**Frontend error handling**: Show message and retry on failure; on success navigate to learning path or next step.
 
 ---
 
@@ -595,25 +595,25 @@
 - **Path**: `/validate-profile-fairness`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | JSON 字符串化的画像 |
-| `learner_information` | string | ✅ | 学习者信息 |
-| `persona_name` | string | 可选 | 默认 "" |
-| `model_provider` / `model_name` | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | JSON-stringified profile |
+| `learner_information` | string | ✅ | Learner information |
+| `persona_name` | string | optional | Default "" |
+| `model_provider` / `model_name` | optional |  | |
 
-**Response — 成功 (200)**  
-公平性校验结果对象。
+**Response — Success (200)**  
+Fairness validation result object.
 
-**Response — 失败**  
+**Response — Error**  
 - `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 失败提示；成功根据结果决定是否允许进入下一步。
+**Auth**: None  
+**Frontend error handling**: Show message on failure; on success decide from result whether to allow next step.
 
 ---
 
-## 8. 画像更新 (Profile Updates)
+## 8. Profile updates
 
 ### 8.1 POST `/update-learner-profile`
 
@@ -621,25 +621,25 @@
 - **Path**: `/update-learner-profile`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 当前画像（可 JSON 字符串） |
-| `learner_interactions` | string | ✅ | 交互记录（可 JSON 字符串） |
-| `learner_information` | string | 可选 | 默认 "" |
-| `session_information` | string | 可选 | 默认 "" |
-| `user_id` / `goal_id` | string / number | 可选 | 若提供则写 store |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Current profile (may be JSON string) |
+| `learner_interactions` | string | ✅ | Interaction log (may be JSON string) |
+| `learner_information` | string | optional | Default "" |
+| `session_information` | string | optional | Default "" |
+| `user_id` / `goal_id` | string / number | optional | If provided, write to store |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "learner_profile": { ... } }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 失败提示并重试；成功用返回的 `learner_profile` 更新本地状态。
+**Auth**: None  
+**Frontend error handling**: Show message and retry on failure; on success update local state with returned `learner_profile`.
 
 ---
 
@@ -649,20 +649,20 @@
 - **Path**: `/update-cognitive-status`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 当前画像 |
-| `session_information` | string | ✅ | 会话信息（可 JSON 字符串） |
-| `user_id` / `goal_id` | 可选 |  | |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Current profile |
+| `session_information` | string | ✅ | Session info (may be JSON string) |
+| `user_id` / `goal_id` | optional |  | |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "learner_profile": { ... } }
 ```
 
-**认证**: None  
-**前端错误处理**: 失败可静默或轻提示，避免打断学习流程。
+**Auth**: None  
+**Frontend error handling**: May fail silently or show light message to avoid interrupting learning.
 
 ---
 
@@ -672,25 +672,25 @@
 - **Path**: `/update-learning-preferences`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 当前画像 |
-| `learner_interactions` | string | ✅ | 交互记录 |
-| `learner_information` | string | 可选 | 默认 "" |
-| `user_id` / `goal_id` | 可选 |  | |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Current profile |
+| `learner_interactions` | string | ✅ | Interaction log |
+| `learner_information` | string | optional | Default "" |
+| `user_id` / `goal_id` | optional |  | |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "learner_profile": { ... } }
 ```
 
-**认证**: None  
-**前端错误处理**: 同 8.1。
+**Auth**: None  
+**Frontend error handling**: Same as 8.1.
 
 ---
 
-## 9. 学习路径 (Learning Path)
+## 9. Learning path
 
 ### 9.1 POST `/schedule-learning-path`
 
@@ -698,20 +698,20 @@
 - **Path**: `/schedule-learning-path`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 画像（可 JSON 字符串） |
-| `session_count` | number | ✅ | 会话数量 |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Profile (may be JSON string) |
+| `session_count` | number | ✅ | Session count |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
-对象含 `learning_path`（数组）、可选 `retrieved_sources` 等。
+**Response — Success (200)**  
+Object with `learning_path` (array) and optional `retrieved_sources`, etc.
 
-**Response — 失败**  
+**Response — Error**  
 - `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 长耗时（可 500s timeout），loading + 超时提示；失败可重试。
+**Auth**: None  
+**Frontend error handling**: Long-running (e.g. 500s timeout); show loading and timeout message; allow retry on failure.
 
 ---
 
@@ -721,19 +721,19 @@
 - **Path**: `/reschedule-learning-path`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 画像 |
-| `learning_path` | string | ✅ | 当前路径（可 JSON 字符串） |
-| `session_count` | number | 可选 | 默认 -1 |
-| `other_feedback` | string | 可选 | 用户反馈 |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Profile |
+| `learning_path` | string | ✅ | Current path (may be JSON string) |
+| `session_count` | number | optional | Default -1 |
+| `other_feedback` | string | optional | User feedback |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
-含 `rescheduled_learning_path` 等（结构以后端为准）。
+**Response — Success (200)**  
+Includes `rescheduled_learning_path`, etc. (structure defined by backend).
 
-**认证**: None  
-**前端错误处理**: 同 9.1。
+**Auth**: None  
+**Frontend error handling**: Same as 9.1.
 
 ---
 
@@ -743,17 +743,17 @@
 - **Path**: `/schedule-learning-path-agentic`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 画像（可 JSON 字符串） |
-| `session_count` | number | 可选 | 默认 0 |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Profile (may be JSON string) |
+| `session_count` | number | optional | Default 0 |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
-含 `learning_path`、`agent_metadata` 等。
+**Response — Success (200)**  
+Includes `learning_path`, `agent_metadata`, etc.
 
-**认证**: None  
-**前端错误处理**: 超时建议 120s；失败可重试。
+**Auth**: None  
+**Frontend error handling**: Recommend 120s timeout; allow retry on failure.
 
 ---
 
@@ -763,26 +763,26 @@
 - **Path**: `/adapt-learning-path`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `user_id` | string | ✅ | 用户 ID |
-| `goal_id` | number | ✅ | 目标 ID |
-| `new_learner_profile` | string | ✅ | 更新后的画像（可 JSON 字符串） |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `user_id` | string | ✅ | User ID |
+| `goal_id` | number | ✅ | Goal ID |
+| `new_learner_profile` | string | ✅ | Updated profile (may be JSON string) |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
-含 `learning_path`、`agent_metadata`（含 decision、fslsm_deltas、evaluation_feedback 等）。
+**Response — Success (200)**  
+Includes `learning_path`, `agent_metadata` (e.g. decision, fslsm_deltas, evaluation_feedback).
 
-**Response — 失败**  
-- `404`: 无 state 或 goal  
+**Response — Error**  
+- `404`: No state or goal  
 - `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 404 提示先加载目标/状态；500 提示并重试。
+**Auth**: None  
+**Frontend error handling**: 404 prompt to load goal/state first; 500 show message and retry.
 
 ---
 
-## 10. 知识内容与测验生成
+## 10. Knowledge content and quiz generation
 
 ### 10.1 POST `/explore-knowledge-points`
 
@@ -790,17 +790,17 @@
 - **Path**: `/explore-knowledge-points`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 画像 |
-| `learning_path` | string | ✅ | 学习路径（可 JSON 字符串） |
-| `learning_session` | string | ✅ | 当前会话（可 JSON 字符串） |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Profile |
+| `learning_path` | string | ✅ | Learning path (may be JSON string) |
+| `learning_session` | string | ✅ | Current session (may be JSON string) |
 
-**Response — 成功 (200)**  
-含 `knowledge_points` 等（结构以后端为准）。
+**Response — Success (200)**  
+Includes `knowledge_points`, etc. (structure defined by backend).
 
-**认证**: None  
-**前端错误处理**: 失败提示并重试。
+**Auth**: None  
+**Frontend error handling**: Show message and retry on failure.
 
 ---
 
@@ -810,23 +810,23 @@
 - **Path**: `/draft-knowledge-point`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 画像 |
-| `learning_path` | string | ✅ | 路径 |
-| `learning_session` | string | ✅ | 会话 |
-| `knowledge_points` | string | ✅ | 知识点列表（可 JSON 字符串） |
-| `knowledge_point` | string | ✅ | 当前知识点 |
-| `use_search` | boolean | ✅ | 是否使用检索 |
-| `model_provider` / `model_name` / `method_name` | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Profile |
+| `learning_path` | string | ✅ | Path |
+| `learning_session` | string | ✅ | Session |
+| `knowledge_points` | string | ✅ | Knowledge points list (may be JSON string) |
+| `knowledge_point` | string | ✅ | Current knowledge point |
+| `use_search` | boolean | ✅ | Whether to use search |
+| `model_provider` / `model_name` / `method_name` | optional |  | |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "knowledge_draft": "..." }
 ```
 
-**认证**: None  
-**前端错误处理**: 失败提示并重试。
+**Auth**: None  
+**Frontend error handling**: Show message and retry on failure.
 
 ---
 
@@ -836,23 +836,23 @@
 - **Path**: `/draft-knowledge-points`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 画像 |
-| `learning_path` | string | ✅ | 路径 |
-| `learning_session` | string | ✅ | 会话 |
-| `knowledge_points` | string | ✅ | 知识点列表 |
-| `allow_parallel` | boolean | ✅ | 是否并行 |
-| `use_search` | boolean | ✅ | 是否使用检索 |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Profile |
+| `learning_path` | string | ✅ | Path |
+| `learning_session` | string | ✅ | Session |
+| `knowledge_points` | string | ✅ | Knowledge points list |
+| `allow_parallel` | boolean | ✅ | Allow parallel |
+| `use_search` | boolean | ✅ | Use search |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "knowledge_drafts": [ ... ] }
 ```
 
-**认证**: None  
-**前端错误处理**: 同 10.2。
+**Auth**: None  
+**Frontend error handling**: Same as 10.2.
 
 ---
 
@@ -862,17 +862,17 @@
 - **Path**: `/integrate-learning-document`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 画像 |
-| `learning_path` | string | ✅ | 路径 |
-| `learning_session` | string | ✅ | 会话 |
-| `knowledge_points` | string | ✅ | 知识点列表 |
-| `knowledge_drafts` | string | ✅ | 草稿内容（可 JSON 字符串） |
-| `output_markdown` | boolean | 可选 | 默认 false |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Profile |
+| `learning_path` | string | ✅ | Path |
+| `learning_session` | string | ✅ | Session |
+| `knowledge_points` | string | ✅ | Knowledge points list |
+| `knowledge_drafts` | string | ✅ | Draft content (may be JSON string) |
+| `output_markdown` | boolean | optional | Default false |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 {
   "learning_document": "<string or document_structure>",
@@ -882,8 +882,8 @@
 }
 ```
 
-**认证**: None  
-**前端错误处理**: 失败提示并重试；成功根据 `content_format` / `audio_url` 渲染内容与音频。
+**Auth**: None  
+**Frontend error handling**: Show message and retry on failure; on success render content and audio per `content_format` / `audio_url`.
 
 ---
 
@@ -893,23 +893,23 @@
 - **Path**: `/generate-document-quizzes`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 画像 |
-| `learning_document` | string | ✅ | 学习文档内容 |
-| `single_choice_count` | number | 可选 | 默认 3 |
-| `multiple_choice_count` | number | 可选 | 默认 0 |
-| `true_false_count` | number | 可选 | 默认 0 |
-| `short_answer_count` | number | 可选 | 默认 0 |
-| `open_ended_count` | number | 可选 | 默认 0 |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Profile |
+| `learning_document` | string | ✅ | Learning document content |
+| `single_choice_count` | number | optional | Default 3 |
+| `multiple_choice_count` | number | optional | Default 0 |
+| `true_false_count` | number | optional | Default 0 |
+| `short_answer_count` | number | optional | Default 0 |
+| `open_ended_count` | number | optional | Default 0 |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "document_quiz": { "single_choice_questions": [...], "multiple_choice_questions": [...], "true_false_questions": [...], "short_answer_questions": [...], "open_ended_questions": [...] } }
 ```
 
-**认证**: None  
-**前端错误处理**: 失败提示并重试。
+**Auth**: None  
+**Frontend error handling**: Show message and retry on failure.
 
 ---
 
@@ -919,22 +919,22 @@
 - **Path**: `/tailor-knowledge-content`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 画像 |
-| `learning_path` | string | ✅ | 路径 |
-| `learning_session` | string | ✅ | 会话 |
-| `use_search` | boolean | 可选 | 默认 true |
-| `allow_parallel` | boolean | 可选 | 默认 true |
-| `with_quiz` | boolean | 可选 | 默认 true |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Profile |
+| `learning_path` | string | ✅ | Path |
+| `learning_session` | string | ✅ | Session |
+| `use_search` | boolean | optional | Default true |
+| `allow_parallel` | boolean | optional | Default true |
+| `with_quiz` | boolean | optional | Default true |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "tailored_content": { ... } }
 ```
 
-**认证**: None  
-**前端错误处理**: 失败提示并重试。
+**Auth**: None  
+**Frontend error handling**: Show message and retry on failure.
 
 ---
 
@@ -944,23 +944,23 @@
 - **Path**: `/simulate-content-feedback`
 
 **Request body (JSON)**  
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `learner_profile` | string | ✅ | 画像（可 JSON 字符串） |
-| `learning_content` | string | ✅ | 学习内容（可 JSON 字符串） |
-| BaseRequest 字段 | 可选 |  | |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `learner_profile` | string | ✅ | Profile (may be JSON string) |
+| `learning_content` | string | ✅ | Learning content (may be JSON string) |
+| BaseRequest fields | optional |  | |
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "feedback": { ... } }
 ```
 
-**认证**: None  
-**前端错误处理**: 失败可静默或轻提示（多用于内部评估）。
+**Auth**: None  
+**Frontend error handling**: May fail silently or show light message (often used for internal evaluation).
 
 ---
 
-## 11. 其他
+## 11. Other
 
 ### 11.1 GET `/events/{user_id}`
 
@@ -968,13 +968,13 @@
 - **Path**: `/events/{user_id}`  
 - **Path params**: `user_id`: string
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "user_id": "...", "events": [ ... ] }
 ```
 
-**认证**: None  
-**前端错误处理**: 失败返回空数组或忽略。
+**Auth**: None  
+**Frontend error handling**: On failure return empty array or ignore.
 
 ---
 
@@ -986,30 +986,30 @@
 
 **Request body**: `file`: File (PDF)
 
-**Response — 成功 (200)**  
+**Response — Success (200)**  
 ```json
 { "text": "extracted raw text..." }
 ```
 
-**Response — 失败**  
+**Response — Error**  
 - `500`: `{"detail": "..."}`
 
-**认证**: None  
-**前端错误处理**: 失败提示“PDF 解析失败”并允许重新上传。
+**Auth**: None  
+**Frontend error handling**: On failure show "PDF extraction failed" and allow re-upload.
 
 ---
 
-## 认证与 Token 汇总
+## Auth and token summary
 
-| 接口类型 | 认证方式 | Token 存放建议 |
-|----------|----------|----------------|
-| `/auth/register`, `/auth/login` | None | 成功后将 `token` 存 `localStorage.auth_token`（或 sessionStorage），并写入内存（Context/Store） |
-| `/auth/me`, `/auth/user` (DELETE) | JWT | 请求头 `Authorization: Bearer <token>`；从同一存储读取 token |
-| 其余接口 | None（当前） | 若后续按 user 鉴权，可统一在 axios/fetch 拦截器中附加 JWT |
+| Endpoint type | Auth | Token storage |
+|---------------|------|----------------|
+| `/auth/register`, `/auth/login` | None | After success store `token` in `localStorage.auth_token` (or sessionStorage) and in memory (Context/Store) |
+| `/auth/me`, `/auth/user` (DELETE) | JWT | Header `Authorization: Bearer <token>`; read token from same store |
+| Other endpoints | None (current) | If adding per-user auth later, attach JWT in axios/fetch interceptor |
 
-**前端错误处理策略汇总**  
-- **401**（仅 auth 相关）：清除 token，**跳转登录**。  
-- **404**：根据接口语义处理（如 state/profile 不存在则初始化或展示空状态）。  
-- **4xx 业务错误**：展示 `detail`，不重试或仅对幂等操作重试。  
-- **5xx / 网络错误**：可对关键接口**重试 1 次**（如 state 保存、路径生成、测验提交）；仍失败则**提示**“服务暂时不可用，请稍后重试”。  
-- **长耗时接口**（如 schedule-learning-path、identify-skill-gap、LLM 类）：**Loading + 合理 timeout**（如 120–500s），超时后提示并允许重试。
+**Frontend error handling summary**  
+- **401** (auth only): Clear token and **redirect to login**.  
+- **404**: Handle by endpoint semantics (e.g. init or show empty when state/profile missing).  
+- **4xx**: Show `detail`; do not retry or retry only idempotent operations.  
+- **5xx / network**: Retry **once** for critical calls (e.g. state save, path generation, quiz submit); then show "Service temporarily unavailable. Please try again later."  
+- **Long-running** (e.g. schedule-learning-path, identify-skill-gap, LLM): **Loading + reasonable timeout** (e.g. 120–500s); after timeout show message and allow retry.

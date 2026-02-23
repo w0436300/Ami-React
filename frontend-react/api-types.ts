@@ -1,18 +1,18 @@
 /**
- * API 请求/响应 TypeScript 类型草案
- * 与 API_CONTRACT.md 对应，供 React 前端与 FastAPI 后端对接使用。
+ * API request/response TypeScript type draft.
+ * Aligned with API_CONTRACT.md for React frontend and FastAPI backend.
  */
 
-// ============== 通用 ==============
+// ============== Common ==============
 
-/** 多数 POST 请求可选的 LLM/方法参数 */
+/** Optional LLM/method params for most POST requests */
 export interface BaseRequest {
   model_provider?: string;
   model_name?: string;
   method_name?: string; // default "genmentor"
 }
 
-/** 后端统一错误体 */
+/** Backend standard error body */
 export interface ApiErrorBody {
   detail: string;
 }
