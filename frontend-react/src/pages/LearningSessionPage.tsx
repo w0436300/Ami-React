@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { BREADCRUMB_GOAL, DEFAULT_SESSION_ID, getSessionById } from '@/mock/learningPath';
 
 /* ------------------------------------------------------------------ */
 /*  Types & mock data                                                 */
@@ -29,9 +30,6 @@ interface SessionModule {
   vocab: VocabItem[];
   practice: string;
 }
-
-const BREADCRUMB = 'Learn French for Travel → Session 2';
-const SESSION_TITLE = 'Numbers, Dates & Time';
 
 const MODULES: SessionModule[] = [
   {
@@ -107,8 +105,8 @@ const OVERVIEW_ITEMS: ModuleItem[] = MODULES.map((m) => ({
   title: m.title,
 }));
 
-const WELCOME_MSG =
-  'Welcome to Session 2! We\'re covering numbers, dates, and time today. This builds on your greetings from Session 1. Ready to start with les nombres?';
+const WELCOME_MSG = (sessionIndex: number) =>
+  `Welcome to Session ${sessionIndex}! We're covering this session's content. Ready to start?`;
 
 /* ------------------------------------------------------------------ */
 /*  Page component                                                     */
@@ -116,10 +114,16 @@ const WELCOME_MSG =
 
 export function LearningSessionPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const sessionId = (location.state as { sessionId?: string } | null)?.sessionId ?? DEFAULT_SESSION_ID;
+  const session = getSessionById(sessionId) ?? getSessionById(DEFAULT_SESSION_ID)!;
+  const breadcrumb = `${BREADCRUMB_GOAL} → Session ${session.index}`;
+  const sessionTitle = session.title;
+
   const [moduleIndex, setModuleIndex] = useState(0);
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<{ from: 'mentor' | 'user'; text: string; time: string }>([
-    { from: 'mentor', text: WELCOME_MSG, time: 'just now' },
+    { from: 'mentor', text: WELCOME_MSG(session.index), time: 'just now' },
   ]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -175,10 +179,10 @@ export function LearningSessionPage() {
         {/* Header strip */}
         <div className="shrink-0 px-6 py-3 border-b border-slate-100 bg-white">
           <p className="text-xs text-slate-500">
-            {BREADCRUMB}
+            {breadcrumb}
           </p>
           <div className="flex items-center justify-between mt-1 gap-4">
-            <h1 className="text-xl font-bold text-slate-900">{SESSION_TITLE}</h1>
+            <h1 className="text-xl font-bold text-slate-900">{sessionTitle}</h1>
             <div className="flex items-center gap-3 text-sm text-slate-500">
               <span>Module {moduleIndex + 1} of {MODULES.length}</span>
               <div className="flex items-center gap-2">
