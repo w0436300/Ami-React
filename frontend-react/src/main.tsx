@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ApiToastBridge } from '@/components/ApiToastBridge';
+import { HasEnteredGoalProvider } from '@/context/HasEnteredGoalContext';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -19,10 +20,12 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <ApiToastBridge />
-        <RouterProvider router={router} />
-      </ToastProvider>
+      <HasEnteredGoalProvider>
+        <ToastProvider>
+          <ApiToastBridge />
+          <RouterProvider router={router} />
+        </ToastProvider>
+      </HasEnteredGoalProvider>
     </QueryClientProvider>
   </StrictMode>,
 );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, InputField, Modal } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { useHasEnteredGoal } from '@/context/HasEnteredGoalContext';
 
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                         */
@@ -49,6 +50,7 @@ function formatStartedDate(date: Date): string {
 
 export function GoalsPage() {
   const navigate = useNavigate();
+  const { setHasEnteredGoal } = useHasEnteredGoal();
   const [goals, setGoals] = useState<GoalCard[]>(INITIAL_GOALS);
   const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
   const [topic, setTopic] = useState('');
@@ -61,6 +63,7 @@ export function GoalsPage() {
   const handleGenerate = () => {
     const title = topic.trim();
     if (!title) return;
+    setHasEnteredGoal(true);
     const newGoal: GoalCard = {
       id: `g-${Date.now()}`,
       title,

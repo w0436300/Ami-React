@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, InputField } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { useHasEnteredGoal } from '@/context/HasEnteredGoalContext';
 
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                         */
@@ -29,6 +30,7 @@ type OnboardingState = 'idle' | 'category-selected' | 'goal-refined' | 'submitti
 
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const { setHasEnteredGoal } = useHasEnteredGoal();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [learningGoal, setLearningGoal] = useState('');
   const [isRefining, setIsRefining] = useState(false);
@@ -71,10 +73,11 @@ export function OnboardingPage() {
 
   const handleBeginLearning = useCallback(() => {
     setIsSubmitting(true);
+    setHasEnteredGoal(true);
     setTimeout(() => {
       navigate('/skill-gap');
     }, 1200);
-  }, [navigate]);
+  }, [navigate, setHasEnteredGoal]);
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
