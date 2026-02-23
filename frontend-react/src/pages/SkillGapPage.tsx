@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Toggle } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
@@ -219,6 +220,7 @@ function SkillCard({
 /* ------------------------------------------------------------------ */
 
 export function SkillGapPage() {
+  const navigate = useNavigate();
   const [skills, setSkills] = useState<SkillGap[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -264,10 +266,9 @@ export function SkillGapPage() {
   const handleConfirm = useCallback(() => {
     setIsSubmitting(true);
     setTimeout(() => {
-      setIsSubmitting(false);
-      // TODO: navigate to /learning-path after real API call
-    }, 2000);
-  }, []);
+      navigate('/learning-session');
+    }, 1500);
+  }, [navigate]);
 
   /* ── Loading skeleton ── */
   if (isLoading) {
@@ -324,6 +325,7 @@ export function SkillGapPage() {
           size="lg"
           disabled={isSubmitting}
           className="!bg-slate-800 !text-white hover:!bg-slate-700 px-8"
+          onClick={() => navigate('/learning-session')}
         >
           Skip
         </Button>
