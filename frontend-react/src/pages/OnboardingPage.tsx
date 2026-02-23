@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, InputField } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
@@ -27,6 +28,7 @@ type OnboardingState = 'idle' | 'category-selected' | 'goal-refined' | 'submitti
 /* ------------------------------------------------------------------ */
 
 export function OnboardingPage() {
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [learningGoal, setLearningGoal] = useState('');
   const [isRefining, setIsRefining] = useState(false);
@@ -70,10 +72,9 @@ export function OnboardingPage() {
   const handleBeginLearning = useCallback(() => {
     setIsSubmitting(true);
     setTimeout(() => {
-      setIsSubmitting(false);
-      // TODO: navigate to /goals or /learning-path after real API call
-    }, 2000);
-  }, []);
+      navigate('/skill-gap');
+    }, 1200);
+  }, [navigate]);
 
   return (
     <div className="flex flex-col min-h-0 flex-1">
