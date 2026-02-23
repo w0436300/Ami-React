@@ -7,3 +7,4 @@ export * from './metrics';
 export * from './mastery';
 export * from './learningPath';
 export * from './pdf';
+export * from './refineLearningGoal';

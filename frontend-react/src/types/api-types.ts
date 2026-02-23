@@ -260,6 +260,9 @@ export interface RefineLearningGoalRequest extends BaseRequest {
   learner_information?: string;
 }
 
+/** Backend may return refined goal as string or object */
+export type RefineLearningGoalResponse = string | { refined_goal?: string; [key: string]: unknown };
+
 export interface SkillGapIdentificationRequest extends BaseRequest {
   learning_goal: string;
   learner_information: string;

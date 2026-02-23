@@ -39,6 +39,7 @@ export type {
   OpenEndedFeedbackItem,
   MasteryEvaluationResponse,
   RefineLearningGoalRequest,
+  RefineLearningGoalResponse,
   SkillGapIdentificationRequest,
   IdentifySkillGapResponse,
   BiasAuditRequest,

@@ -17,17 +17,19 @@ function clearTokenAndRedirectToLogin(): void {
   }
 }
 
-function getDetailFromError(err: AxiosError<{ detail?: string }>): string {
+function getDetailFromError(
+  err: AxiosError<{ detail?: string | Array<{ msg?: string }> }>
+): string {
   const d = err.response?.data?.detail;
   if (typeof d === 'string') return d;
-  if (Array.isArray(d)) return d.map((x: { msg?: string }) => x?.msg ?? '').join('; ');
+  if (Array.isArray(d)) return d.map((x) => x?.msg ?? '').join('; ');
   return err.message || 'Request failed';
 }
 
 export function setupResponseErrorHandling(client: AxiosInstance): void {
   client.interceptors.response.use(
     (res) => res,
-    (err: AxiosError<{ detail?: string }>) => {
+    (err: AxiosError<{ detail?: string | Array<{ msg?: string }> }>) => {
       const status = err.response?.status;
       const detail = getDetailFromError(err);
 

@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 
 const nav = [
   { to: '/', label: 'Home' },
+  { to: '/example/refine-goal', label: 'Example: Refine Goal' },
   { to: '/login', label: 'Login' },
   { to: '/register', label: 'Register' },
   { to: '/onboarding', label: 'Onboarding' },
