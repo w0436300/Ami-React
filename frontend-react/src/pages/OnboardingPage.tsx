@@ -81,7 +81,7 @@ export function OnboardingPage() {
     ? 'submitting'
     : showPreferenceModule
       ? 'preference'
-      : refinedText !== null
+      : refinedText !== null || learningGoal.trim()
         ? 'goal-refined'
         : selectedCategory !== null
           ? 'category-selected'
