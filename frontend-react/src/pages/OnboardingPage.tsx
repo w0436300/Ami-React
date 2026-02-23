@@ -258,7 +258,7 @@ export function OnboardingPage() {
               size="sm"
               onClick={handleRefine}
               loading={false}
-              disabled={!learningGoal.trim() || isSubmitting}
+              disabled={!learningGoal.trim() || isSubmitting || isRefining}
               className="mt-0.5 whitespace-nowrap"
             >
               AI Refinement
