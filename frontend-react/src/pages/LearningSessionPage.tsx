@@ -273,7 +273,6 @@ export function LearningSessionPage() {
             {moduleIndex < MODULES.length - 1 ? (
               <>
                 Next Module →
-                <span className="ml-1">🍓</span>
               </>
             ) : (
               'Finish Session ✓'

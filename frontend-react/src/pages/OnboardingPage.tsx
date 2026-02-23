@@ -11,15 +11,13 @@ import { useHasEnteredGoal } from '@/context/HasEnteredGoalContext';
 interface Category {
   id: string;
   label: string;
-  /** Emoji shown when selected */
-  selectedEmoji: string;
 }
 
 const CATEGORIES: Category[] = [
-  { id: 'language',  label: 'Learn a new language',   selectedEmoji: '🍓' },
-  { id: 'practical', label: 'Build a practical skill', selectedEmoji: '🔧' },
-  { id: 'career',    label: 'Career related skill',    selectedEmoji: '💼' },
-  { id: 'design',    label: 'Design skill',            selectedEmoji: '🎨' },
+  { id: 'language',  label: 'Learn a new language' },
+  { id: 'practical', label: 'Build a practical skill' },
+  { id: 'career',    label: 'Career related skill' },
+  { id: 'design',    label: 'Design skill' },
 ];
 
 interface LearningPreference {
@@ -168,15 +166,7 @@ export function OnboardingPage() {
                           : 'border-slate-200 bg-white',
                       )}
                     >
-                      <div className="flex items-start gap-2 mb-2">
-                        <span
-                          className="w-5 h-5 rounded-full border border-slate-400 flex items-center justify-center text-slate-600 text-xs font-bold shrink-0"
-                          aria-hidden
-                        >
-                          i
-                        </span>
-                        <span className="font-semibold text-slate-900 text-sm">{pref.title}</span>
-                      </div>
+                      <span className="font-semibold text-slate-900 text-sm block mb-2">{pref.title}</span>
                       <p className="text-xs text-slate-600 leading-relaxed mb-3">{pref.description}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {pref.tags.map((tag, i) => (
@@ -210,7 +200,7 @@ export function OnboardingPage() {
                 <Button
                   type="button"
                   onClick={handleBeginLearning}
-                  loading={isSubmitting}
+                  loading={false}
                   className="!bg-slate-800 hover:!bg-slate-700 !text-white"
                 >
                   Begin Learning
@@ -267,7 +257,7 @@ export function OnboardingPage() {
               variant="secondary"
               size="sm"
               onClick={handleRefine}
-              loading={isRefining}
+              loading={false}
               disabled={!learningGoal.trim() || isSubmitting}
               className="mt-0.5 whitespace-nowrap"
             >
@@ -302,11 +292,6 @@ export function OnboardingPage() {
                   )}
                 >
                   {cat.label}
-                  {isSelected && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-lg">
-                      {cat.selectedEmoji}
-                    </span>
-                  )}
                 </button>
               );
             })}
@@ -332,7 +317,7 @@ export function OnboardingPage() {
             <Button
               size="lg"
               onClick={handleBeginLearning}
-              loading={isSubmitting}
+              loading={false}
               disabled={pageState === 'idle'}
               className="w-full sm:w-auto !bg-primary-600 hover:!bg-primary-700 !text-white px-10"
             >
