@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui';
+import { Button, InputField, Modal } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 /* ------------------------------------------------------------------ */
@@ -32,11 +33,15 @@ const ACTIVE_GOAL: GoalCard & { goalDetail: string; nextUp: string; nextUpEst: s
   nextUpEst: '15 min',
 };
 
-const ALL_GOALS: GoalCard[] = [
+const INITIAL_GOALS: GoalCard[] = [
   { id: 'g1', title: 'Learn French for Travel', status: 'In Progress', startedDate: 'Feb 15', progressPct: 42 },
   { id: 'g2', title: 'Python for Data Analysis', status: 'In Progress', startedDate: 'Feb 15', progressPct: 68 },
   { id: 'g3', title: 'Public Speaking', status: 'Needs Attention', startedDate: 'Feb 15', progressPct: 25 },
 ];
+
+function formatStartedDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 /* ------------------------------------------------------------------ */
 /*  Page component                                                     */
@@ -44,6 +49,28 @@ const ALL_GOALS: GoalCard[] = [
 
 export function GoalsPage() {
   const navigate = useNavigate();
+  const [goals, setGoals] = useState<GoalCard[]>(INITIAL_GOALS);
+  const [isAddGoalModalOpen, setIsAddGoalModalOpen] = useState(false);
+  const [topic, setTopic] = useState('');
+
+  const handleCloseAddGoalModal = () => {
+    setIsAddGoalModalOpen(false);
+    setTopic('');
+  };
+
+  const handleGenerate = () => {
+    const title = topic.trim();
+    if (!title) return;
+    const newGoal: GoalCard = {
+      id: `g-${Date.now()}`,
+      title,
+      status: 'In Progress',
+      startedDate: formatStartedDate(new Date()),
+      progressPct: 0,
+    };
+    setGoals((prev) => [...prev, newGoal]);
+    handleCloseAddGoalModal();
+  };
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -102,9 +129,9 @@ export function GoalsPage() {
 
       {/* All goals grid */}
       <section>
-        <h3 className="text-base font-semibold text-slate-800 mb-4">ALL GOALS ({ALL_GOALS.length + 1})</h3>
+        <h3 className="text-base font-semibold text-slate-800 mb-4">ALL GOALS ({goals.length + 1})</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ALL_GOALS.map((goal) => (
+          {goals.map((goal) => (
             <div
               key={goal.id}
               className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col"
@@ -139,6 +166,7 @@ export function GoalsPage() {
           {/* Add new goal card */}
           <button
             type="button"
+            onClick={() => setIsAddGoalModalOpen(true)}
             className={cn(
               'relative rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 p-6',
               'flex flex-col items-center justify-center gap-2 min-h-[200px]',
@@ -155,6 +183,31 @@ export function GoalsPage() {
           </button>
         </div>
       </section>
+
+      {/* Add New Goal modal */}
+      <Modal
+        open={isAddGoalModalOpen}
+        onClose={handleCloseAddGoalModal}
+        title="Add New Goal"
+      >
+        <div className="space-y-4">
+          <InputField
+            placeholder="Topic......"
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            aria-label="Goal topic"
+          />
+          <div className="flex justify-end">
+            <Button
+              size="md"
+              className="!bg-slate-800 hover:!bg-slate-700 !text-white"
+              onClick={handleGenerate}
+            >
+              Generate
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
