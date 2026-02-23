@@ -81,6 +81,24 @@ For setup and usage instructions, see the respective directories:
 - [`backend/`](backend/) — Backend installation, configuration, and running instructions
 - [`frontend/`](frontend/) — Frontend installation, configuration, and running instructions
 
+### Deploying React frontend to GitHub Pages
+
+The React app in `frontend-react/` can be published to GitHub Pages so the site is available at `https://<username>.github.io/<repo>/`.
+
+1. **Enable GitHub Pages (one-time)**  
+   In your repo: **Settings → Pages → Build and deployment → Source** → choose **GitHub Actions**.
+
+2. **Push to trigger deploy**  
+   Push to the `main` branch (or run the workflow manually: **Actions → Deploy to GitHub Pages → Run workflow**). The workflow builds `frontend-react` and deploys the `dist` output.
+
+3. **If your default branch is not `main`**  
+   Edit [`.github/workflows/deploy-gh-pages.yml`](.github/workflows/deploy-gh-pages.yml) and change `branches: [main]` to your branch (e.g. `master`).
+
+4. **Local build for testing**  
+   From repo root:  
+   `cd frontend-react && BASE_PATH=/Ami-React/ npm run build`  
+   Then open `frontend-react/dist/index.html` or use `npx serve frontend-react/dist -p 4173` and visit `http://localhost:4173/Ami-React/`.
+
 ## MVP Interface Walkthrough
 
 The screenshots below show the current MVP interfaces and key adaptive behaviors.

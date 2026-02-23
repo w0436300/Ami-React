@@ -13,7 +13,11 @@ import { SkillGapPage } from '@/pages/SkillGapPage';
 import { RefineGoalExamplePage } from '@/pages/RefineGoalExamplePage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 
-export const router = createBrowserRouter([
+// Vite 的 base（如 /Ami-React/）去掉末尾斜杠作为 React Router basename，适配 GitHub Pages
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+
+export const router = createBrowserRouter(
+  [
   /* Landing / Onboarding — full-page, no sidebar */
   {
     element: <OnboardingLayout />,
@@ -52,4 +56,6 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
-]);
+  ],
+  { basename }
+);
