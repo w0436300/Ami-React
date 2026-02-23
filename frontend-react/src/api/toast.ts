@@ -1,6 +1,6 @@
 /**
- * Toast placeholder: replace later with react-hot-toast / sonner / custom component.
- * Currently console + optional global handler for unified error handling.
+ * Bridge between the api layer (which can't use hooks) and the Toast UI component.
+ * The ToastProvider calls connectApiToast() on mount to wire everything up.
  */
 
 export type ToastType = 'success' | 'error' | 'info' | 'loading';

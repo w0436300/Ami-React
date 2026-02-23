@@ -1,5 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { Layout } from '@/components/Layout';
+import { AppShell, AuthLayout, OnboardingLayout } from '@/components/shell';
 import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
@@ -12,21 +12,33 @@ import { SkillGapPage } from '@/pages/SkillGapPage';
 import { RefineGoalExamplePage } from '@/pages/RefineGoalExamplePage';
 
 export const router = createBrowserRouter([
+  /* Landing / Onboarding — full-page, no sidebar */
   {
-    path: '/',
-    element: <Layout />,
+    element: <OnboardingLayout />,
     children: [
-      { index: true, element: <HomePage /> },
-      { path: 'login', element: <LoginPage /> },
-      { path: 'register', element: <RegisterPage /> },
-      { path: 'onboarding', element: <OnboardingPage /> },
-      { path: 'goals', element: <GoalsPage /> },
-      { path: 'profile', element: <ProfilePage /> },
-      { path: 'learning-path', element: <LearningPathPage /> },
-      { path: 'knowledge', element: <KnowledgePage /> },
-      { path: 'skill-gap', element: <SkillGapPage /> },
-      { path: 'example/refine-goal', element: <RefineGoalExamplePage /> },
-      { path: '*', element: <Navigate to="/" replace /> },
+      { path: '/', element: <OnboardingPage /> },
     ],
   },
+  /* Main app — sidebar + top bar */
+  {
+    element: <AppShell />,
+    children: [
+      { path: '/dashboard', element: <HomePage /> },
+      { path: '/goals', element: <GoalsPage /> },
+      { path: '/profile', element: <ProfilePage /> },
+      { path: '/learning-path', element: <LearningPathPage /> },
+      { path: '/knowledge', element: <KnowledgePage /> },
+      { path: '/skill-gap', element: <SkillGapPage /> },
+      { path: '/example/refine-goal', element: <RefineGoalExamplePage /> },
+    ],
+  },
+  /* Auth — centered card layout */
+  {
+    element: <AuthLayout />,
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/register', element: <RegisterPage /> },
+    ],
+  },
+  { path: '*', element: <Navigate to="/" replace /> },
 ]);
