@@ -22,7 +22,47 @@ const CATEGORIES: Category[] = [
   { id: 'design',    label: 'Design skill',            selectedEmoji: '🎨' },
 ];
 
-type OnboardingState = 'idle' | 'category-selected' | 'goal-refined' | 'submitting';
+interface LearningPreference {
+  id: string;
+  title: string;
+  description: string;
+  tags: string[];
+}
+
+const LEARNING_PREFERENCES: LearningPreference[] = [
+  {
+    id: 'hands-on',
+    title: 'Hands-on Explorer',
+    description: 'Learns best by doing. Prefers step-by-step practice and examples.',
+    tags: ['Active', 'Visual', 'Step-by-step'],
+  },
+  {
+    id: 'reflective',
+    title: 'Reflective Reader',
+    description: 'Learns through reading and reflection. Prefers detailed explanations.',
+    tags: ['Reading', 'Reflection'],
+  },
+  {
+    id: 'visual',
+    title: 'Visual Learner',
+    description: 'Prefers diagrams and videos. Likes seeing concepts shown clearly.',
+    tags: ['Visual', 'Diagrams'],
+  },
+  {
+    id: 'conceptual',
+    title: 'Conceptual Thinker',
+    description: 'Enjoys theories and the big picture. Likes analysis and connections.',
+    tags: ['Theory', 'Analysis', 'Big-picture'],
+  },
+  {
+    id: 'balanced',
+    title: 'Balanced Learner',
+    description: 'No strong preference. Adapts to different learning formats.',
+    tags: ['Flexible', 'Neutral'],
+  },
+];
+
+type OnboardingState = 'idle' | 'category-selected' | 'goal-refined' | 'preference' | 'submitting';
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                         */
@@ -36,14 +76,18 @@ export function OnboardingPage() {
   const [isRefining, setIsRefining] = useState(false);
   const [refinedText, setRefinedText] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPreferenceModule, setShowPreferenceModule] = useState(false);
+  const [selectedPreferenceId, setSelectedPreferenceId] = useState<string | null>('hands-on');
 
   const pageState: OnboardingState = isSubmitting
     ? 'submitting'
-    : refinedText !== null
-      ? 'goal-refined'
-      : selectedCategory !== null
-        ? 'category-selected'
-        : 'idle';
+    : showPreferenceModule
+      ? 'preference'
+      : refinedText !== null
+        ? 'goal-refined'
+        : selectedCategory !== null
+          ? 'category-selected'
+          : 'idle';
 
   const handleSelectCategory = useCallback(
     (id: string) => {
@@ -79,6 +123,10 @@ export function OnboardingPage() {
     }, 1200);
   }, [navigate, setHasEnteredGoal]);
 
+  const handleSkipPreference = useCallback(() => {
+    setShowPreferenceModule(false);
+  }, []);
+
   return (
     <div className="flex flex-col min-h-0 flex-1">
       {/* ── Scrollable content ── */}
@@ -95,7 +143,107 @@ export function OnboardingPage() {
           </p>
         </section>
 
-        {/* ── Main content ── */}
+        {/* ── Preference module (design: Select Your Learning Preference) ── */}
+        {showPreferenceModule ? (
+          <section className="max-w-4xl w-full mx-auto px-4 pb-8">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-8">
+              <h2 className="text-lg font-semibold text-slate-900 mb-6">
+                Select Your Learning Preference
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                {LEARNING_PREFERENCES.map((pref) => {
+                  const isSelected = selectedPreferenceId === pref.id;
+                  return (
+                    <button
+                      key={pref.id}
+                      type="button"
+                      onClick={() => setSelectedPreferenceId(pref.id)}
+                      disabled={isSubmitting}
+                      className={cn(
+                        'text-left rounded-lg border-2 p-4 transition-all',
+                        'hover:border-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400',
+                        'disabled:opacity-50 disabled:cursor-not-allowed',
+                        isSelected
+                          ? 'border-slate-800 bg-slate-50'
+                          : 'border-slate-200 bg-white',
+                      )}
+                    >
+                      <div className="flex items-start gap-2 mb-2">
+                        <span
+                          className="w-5 h-5 rounded-full border border-slate-400 flex items-center justify-center text-slate-600 text-xs font-bold shrink-0"
+                          aria-hidden
+                        >
+                          i
+                        </span>
+                        <span className="font-semibold text-slate-900 text-sm">{pref.title}</span>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed mb-3">{pref.description}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {pref.tags.map((tag, i) => (
+                          <span
+                            key={tag}
+                            className={cn(
+                              'text-xs px-2 py-0.5 rounded-full',
+                              isSelected && i === 0
+                                ? 'bg-slate-700 text-white'
+                                : 'bg-slate-100 text-slate-600',
+                            )}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleSkipPreference}
+                  disabled={isSubmitting}
+                  className="border-slate-300"
+                >
+                  Skip
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleBeginLearning}
+                  loading={isSubmitting}
+                  className="!bg-slate-800 hover:!bg-slate-700 !text-white"
+                >
+                  Begin Learning
+                </Button>
+              </div>
+            </div>
+
+            {/* Optional: Resume & LinkedIn (with info icon) */}
+            <div className="mt-6 space-y-3">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                className="w-full flex items-center gap-3 text-left px-4 py-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors"
+              >
+                <span className="w-5 h-5 rounded-full border border-slate-400 flex items-center justify-center text-slate-600 text-xs font-bold shrink-0">
+                  i
+                </span>
+                <span className="text-sm font-medium text-slate-700">Upload Your Resume (Optional)</span>
+              </button>
+              <button
+                type="button"
+                disabled={isSubmitting}
+                className="w-full flex items-center gap-3 text-left px-4 py-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 transition-colors"
+              >
+                <span className="w-5 h-5 rounded-full border border-slate-400 flex items-center justify-center text-slate-600 text-xs font-bold shrink-0">
+                  i
+                </span>
+                <span className="text-sm font-medium text-slate-700">Connect to your LinkedIn</span>
+              </button>
+            </div>
+          </section>
+        ) : (
+        /* ── Main content (goal + categories) ── */
         <section className="max-w-2xl w-full mx-auto px-4 space-y-6 pb-8">
           {/* Question prompt */}
           <p className="text-center text-sm font-medium text-slate-700">
@@ -171,11 +319,12 @@ export function OnboardingPage() {
               Enter any topic you want to learn, and the system will automatically
               generate personalized content for you.
             </p>
-            <Button variant="secondary" size="sm" disabled={isSubmitting}>
+            <Button variant="secondary" size="sm" disabled={isSubmitting} onClick={() => setShowPreferenceModule(true)}>
               Adjust Preference
             </Button>
           </div>
         </section>
+        )}
 
         {/* ── State indicator (dev aid — remove in production) ── */}
         <div className="max-w-2xl mx-auto px-4 pb-4">
