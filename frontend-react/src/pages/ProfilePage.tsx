@@ -33,7 +33,7 @@ const TALENT_FILE = {
 /* ------------------------------------------------------------------ */
 
 export function ProfilePage() {
-  const [sessionReminders, setSessionReminders] = useState(true);
+  const [learningStyle, setLearningStyle] = useState('Visual Learner');
   const [aiDifficulty, setAiDifficulty] = useState(true);
   const [bilingualContent, setBilingualContent] = useState(false);
 
@@ -134,22 +134,56 @@ export function ProfilePage() {
         {/* LEARNING PREFERENCES */}
         <section className="bg-white rounded-xl border border-slate-200 p-5">
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Learning Preferences</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-slate-600">How content is presented</span>
-              <span className="text-sm font-medium text-slate-900 shrink-0">Visual Learner</span>
+          <div className="space-y-5">
+            {/* Presentation style */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
+                Presentation style
+              </p>
+              <div className="inline-flex w-full rounded-2xl bg-primary-50 p-1 border border-primary-100">
+                {['Visual Learner', 'Balanced', 'Text-first'].map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setLearningStyle(option)}
+                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-2xl transition-all ${
+                      learningStyle === option
+                        ? 'bg-primary-600 text-white shadow-sm'
+                        : 'text-primary-700 hover:text-primary-900'
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-slate-500 italic mt-1">
+                Prioritize detailed reading and scripts.
+              </p>
             </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-slate-600">Daily at 8:00 AM</span>
-              <Toggle checked={sessionReminders} onChange={setSessionReminders} className="shrink-0" />
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-slate-600">Adjust content based on performance</span>
-              <Toggle checked={aiDifficulty} onChange={setAiDifficulty} className="shrink-0" />
-            </div>
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm text-slate-600">Show English alongside French</span>
-              <Toggle checked={bilingualContent} onChange={setBilingualContent} className="shrink-0" />
+
+            {/* Content settings */}
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <p className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
+                Content settings
+              </p>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-slate-800">Smart difficulty</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Auto-adjust session level based on your performance.
+                  </p>
+                </div>
+                <Toggle checked={aiDifficulty} onChange={setAiDifficulty} className="shrink-0" />
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm text-slate-800">English support</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Show key phrases with English side by side.
+                  </p>
+                </div>
+                <Toggle checked={bilingualContent} onChange={setBilingualContent} className="shrink-0" />
+              </div>
             </div>
           </div>
         </section>
