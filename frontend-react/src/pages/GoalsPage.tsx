@@ -182,7 +182,7 @@ export function GoalsPage() {
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-2',
             )}
           >
-            <span className="absolute top-3 right-3 text-lg" aria-hidden>🍓</span>
+            {/* <span className="absolute top-3 right-3 text-lg" aria-hidden></span> */}
             <svg className="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
