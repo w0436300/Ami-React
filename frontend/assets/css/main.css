@@ -1,5 +1,5 @@
 :root {
-    --primary: #007bff;
+    --primary: #51C8DD;
     --secondary: #6c757d;
     --success: #28a745;
     --info: #17a2b8;
@@ -13,8 +13,61 @@
 }
 
 
+/* Theme overrides to match config.toml when Community Cloud ignores it */
+.stApp {
+    background-color: #FFFFFF;
+    color: #262730;
+}
+
+.stApp [data-testid="stAppViewBlockContainer"] {
+    background-color: #FFFFFF;
+}
+
+/* Primary buttons */
+button[kind="primary"],
+button[data-testid="baseButton-primary"] {
+    background-color: #51C8DD !important;
+    border-color: #51C8DD !important;
+    color: #FFFFFF !important;
+}
+
+button[kind="primary"]:hover,
+button[data-testid="baseButton-primary"]:hover {
+    background-color: #3ab5cc !important;
+    border-color: #3ab5cc !important;
+}
+
+/* Links */
+a {
+    color: #51C8DD !important;
+}
+
+/* Sliders, radio, checkboxes */
+.stSlider [data-baseweb="slider"] [role="slider"] {
+    background-color: #51C8DD !important;
+}
+
+.stRadio [data-baseweb="radio"] [data-checked="true"] div,
+.stCheckbox [data-baseweb="checkbox"] [data-checked="true"] div {
+    background-color: #51C8DD !important;
+    border-color: #51C8DD !important;
+}
+
+/* Tabs active indicator */
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: #51C8DD !important;
+    border-bottom-color: #51C8DD !important;
+}
+
+/* Secondary background (input fields, expanders, sidebars) */
+.stTextInput input,
+.stTextArea textarea,
+.stSelectbox [data-baseweb="select"] {
+    background-color: #F0F2F6 !important;
+}
+
 h1, h2, h3, h4, h5, h6 {
-    color: #007bff !important;
+    color: #51C8DD !important;
 }
 
 section[data-testid='stSidebar'] {
@@ -73,7 +126,7 @@ header[data-testid="stHeader"] {
 
 [data-testid="stSidebarUserContent"] [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stMarkdown"] a {
     text-decoration: none; 
-    color: #1a73e8;  
+    color: #51C8DD;  
     transition: color 0.3s ease, box-shadow 0.3s ease;;  
 }
 
