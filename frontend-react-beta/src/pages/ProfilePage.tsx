@@ -4,9 +4,11 @@ import { Button, Toggle } from '@/components/ui';
 import { useAuthContext } from '@/context/AuthContext';
 import { useGoalsContext } from '@/context/GoalsContext';
 import { useActiveGoal } from '@/context/GoalsContext';
-import { useDashboardMetrics, useDeleteUserData } from '@/api/endpoints/content';
+import { useDeleteUserData, useUpdateLearnerInformation } from '@/api/endpoints/content';
+import { useBehavioralMetrics } from '@/api/endpoints/metrics';
 import { useDeleteUser } from '@/api/endpoints/auth';
 import { useAppConfig } from '@/api/endpoints/config';
+import { useExtractPdfText } from '@/api/endpoints/pdf';
 
 function formatDuration(secs: number): string {
   if (secs <= 0 || !Number.isFinite(secs)) return '—';
@@ -24,25 +26,29 @@ export function ProfilePage() {
   const { activeGoal } = useActiveGoal();
   const { data: config } = useAppConfig();
 
-  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics(
+  const { data: metrics, isLoading: metricsLoading } = useBehavioralMetrics(
     userId ?? undefined,
     activeGoal?.id,
   );
   const deleteUserDataMutation = useDeleteUserData();
   const deleteUserMutation = useDeleteUser();
+  const updateLearnerInfoMutation = useUpdateLearnerInformation();
+  const extractPdf = useExtractPdfText();
 
   const [learningStyle, setLearningStyle] = useState('Balanced');
   const [aiDifficulty, setAiDifficulty] = useState(true);
   const [bilingualContent, setBilingualContent] = useState(false);
   const [showDeleteDataConfirm, setShowDeleteDataConfirm] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [resumeName, setResumeName] = useState<string | null>(null);
+  const [resumeStatus, setResumeStatus] = useState<string | null>(null);
 
   const profileTags: string[] = [];
   if (activeGoal?.learner_profile?.goal_display_name) {
     profileTags.push('Active learner');
   }
-  if (activeGoal?.learner_profile?.learning_preferences?.fslsm_dimensions) {
-    profileTags.push('FSLSM profile available');
+  if (learningStyle) {
+    profileTags.push(learningStyle);
   }
   if (profileTags.length === 0) profileTags.push('Learner');
 
@@ -76,6 +82,83 @@ export function ProfilePage() {
     }
   };
 
+  const behavioralMetrics: any = metrics ?? {};
+  const masteryHistory: number[] = behavioralMetrics.mastery_history ?? [];
+  const sessionsCompletedMetric: number | undefined = behavioralMetrics.sessions_completed;
+  const totalSessionsMetric: number | undefined = behavioralMetrics.total_sessions_in_path;
+  const totalStudyTimeSec: number | undefined = behavioralMetrics.total_learning_time_sec;
+  const latestMasteryRate: number | undefined = behavioralMetrics.latest_mastery_rate;
+  const motivationalTriggers: number | undefined =
+    behavioralMetrics.motivational_triggers_count;
+
+  let streakDays = 0;
+  for (let i = masteryHistory.length - 1; i >= 0; i -= 1) {
+    if (masteryHistory[i] > 0) streakDays += 1;
+    else break;
+  }
+
+  const masteryThreshold =
+    (config?.mastery_threshold_default as number | undefined) ?? 0.6;
+  const quizzesPassed = masteryHistory.filter((v) => v >= masteryThreshold).length;
+  const quizzesTotal = masteryHistory.length;
+
+  const biasInfo = activeGoal?.profile_fairness as Record<string, unknown> | undefined;
+
+  const handleResumeUpload: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !userId || !activeGoal) return;
+    setResumeStatus(null);
+    setResumeName(file.name);
+    try {
+      const result = await extractPdf.mutateAsync(file);
+      const pdfText = (result as { text?: string }).text ?? '';
+      if (!pdfText) {
+        setResumeStatus('Failed to read PDF. Please try another file.');
+        return;
+      }
+      const currentProfile = (activeGoal.learner_profile ?? {}) as Record<string, unknown>;
+      const res = await updateLearnerInfoMutation.mutateAsync({
+        learner_profile: JSON.stringify(currentProfile),
+        updated_learner_information:
+          (currentProfile.learner_information as string | undefined) ?? '',
+        resume_text: pdfText,
+        user_id: userId,
+        goal_id: activeGoal.id,
+      });
+      updateGoal(activeGoal.id, { ...activeGoal, learner_profile: res.learner_profile });
+      setResumeStatus('Resume connected successfully.');
+    } catch {
+      setResumeStatus('Upload failed. Please try again.');
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  const handleResumeRemove = async () => {
+    if (!userId || !activeGoal) {
+      setResumeName(null);
+      setResumeStatus(null);
+      return;
+    }
+    try {
+      setResumeStatus(null);
+      const currentProfile = (activeGoal.learner_profile ?? {}) as Record<string, unknown>;
+      const res = await updateLearnerInfoMutation.mutateAsync({
+        learner_profile: JSON.stringify(currentProfile),
+        updated_learner_information:
+          (currentProfile.learner_information as string | undefined) ?? '',
+        resume_text: '',
+        user_id: userId,
+        goal_id: activeGoal.id,
+      });
+      updateGoal(activeGoal.id, { ...activeGoal, learner_profile: res.learner_profile });
+      setResumeName(null);
+      setResumeStatus('Resume removed from profile.');
+    } catch {
+      setResumeStatus('Failed to remove resume. Please try again.');
+    }
+  };
+
   return (
     <div className="max-w-4xl space-y-6">
       {/* Top profile card */}
@@ -86,10 +169,10 @@ export function ProfilePage() {
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-semibold text-slate-900">My Profile</h2>
-          <p className="mt-0.5 text-sm text-slate-500">
-            @{userId ?? 'guest'}
-          </p>
+          <h2 className="text-lg font-semibold text-slate-900">
+            {userId ?? 'Learner'}
+          </h2>
+          <p className="mt-0.5 text-sm text-slate-500">@{userId ?? 'guest'}</p>
           <div className="flex flex-wrap gap-2 mt-2">
             {profileTags.map((tag) => (
               <span
@@ -123,8 +206,19 @@ export function ProfilePage() {
         </div>
       </section>
 
-      {/* Grid: Account | Activity | Preferences */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Bias / fairness info banner (if available) */}
+      {biasInfo && (
+        <section className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900">
+          <p className="font-medium">Bias & fairness notice</p>
+          <p className="mt-1 text-xs text-amber-800">
+            Your current learning profile has been evaluated for potential bias. Review analytics
+            and skill gaps to ensure your goals are inclusive and fair.
+          </p>
+        </section>
+      )}
+
+      {/* Grid: Account | Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* ACCOUNT */}
         <section className="bg-white rounded-xl border border-slate-200 p-5">
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Account</h3>
@@ -194,68 +288,71 @@ export function ProfilePage() {
           </dl>
         </section>
 
-        {/* LEARNING PREFERENCES */}
-        <section className="bg-white rounded-xl border border-slate-200 p-5">
-          <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Learning Preferences</h3>
-          <div className="space-y-5">
-            {/* Presentation style */}
-            <div className="space-y-2">
-              <p className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
-                Presentation style
-              </p>
-              <div className="inline-flex w-full rounded-2xl bg-primary-50 p-1 border border-primary-100">
-                {['Visual Learner', 'Balanced', 'Text-first'].map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setLearningStyle(option)}
-                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-2xl transition-all ${
-                      learningStyle === option
-                        ? 'bg-primary-600 text-white shadow-sm'
-                        : 'text-primary-700 hover:text-primary-900'
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-slate-500 italic mt-1">
-                Prioritize detailed reading and scripts.
-              </p>
-            </div>
-
-            {/* Content settings */}
-            <div className="space-y-3 pt-2 border-t border-slate-100">
-              <p className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
-                Content settings
-              </p>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-slate-800">Smart difficulty</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Auto-adjust session level based on your performance.
-                  </p>
-                </div>
-                <Toggle checked={aiDifficulty} onChange={setAiDifficulty} className="shrink-0" />
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm text-slate-800">English support</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Show key phrases with English side by side.
-                  </p>
-                </div>
-                <Toggle checked={bilingualContent} onChange={setBilingualContent} className="shrink-0" />
-              </div>
-            </div>
-          </div>
-        </section>
       </div>
 
-      {/* TALENT ASSETS */}
+      {/* LEARNING PREFERENCES */}
       <section className="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Talent Assets</h3>
-        <div className="border border-slate-200 rounded-lg p-4 bg-slate-50 flex items-center justify-between gap-4">
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">
+          Learning Preferences
+        </h3>
+        <div className="space-y-5">
+          {/* Presentation style */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
+              Learning style
+            </p>
+            <div className="inline-flex w-full rounded-2xl bg-slate-100 p-1 border border-slate-200">
+              {['Visual Learner', 'Balanced', 'Text-first'].map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setLearningStyle(option)}
+                  className={`flex-1 px-4 py-2 text-sm font-medium rounded-2xl transition-all ${
+                    learningStyle === option
+                      ? 'bg-white shadow text-slate-900'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Used by Ami to decide how content is presented.
+            </p>
+          </div>
+
+          {/* Content settings */}
+          <div className="space-y-3 pt-2 border-t border-slate-100">
+            <p className="text-xs font-semibold text-slate-500 tracking-wide uppercase">
+              Content settings
+            </p>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-slate-800">Session reminders</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Daily nudges to keep your learning streak going.
+                </p>
+              </div>
+              <Toggle checked={aiDifficulty} onChange={setAiDifficulty} className="shrink-0" />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-slate-800">AI difficulty adaptation</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Adjust content difficulty based on your performance.
+                </p>
+              </div>
+              <Toggle checked={bilingualContent} onChange={setBilingualContent} className="shrink-0" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* TALENT ASSETS */}
+      <section className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Talent Assets</h3>
+        <div className="border border-slate-200 rounded-lg p-4 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
               <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -263,20 +360,52 @@ export function ProfilePage() {
               </svg>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">No resume connected</p>
-              <p className="text-xs text-slate-500 mt-0.5">Connect your resume or LinkedIn profile (coming soon).</p>
+              <p className="text-sm font-medium text-slate-900 truncate">
+                {resumeName ?? 'No resume connected'}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Upload a PDF resume to enrich your learner profile. Ami uses only the extracted text.
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <button
-              type="button"
-              className="text-sm font-medium text-slate-700 hover:text-slate-900"
-              disabled
-            >
-              Upload
-            </button>
+            {resumeName ? (
+              <>
+                <label className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md bg-primary-600 text-white hover:bg-primary-700 cursor-pointer">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    className="hidden"
+                    onChange={handleResumeUpload}
+                  />
+                  {extractPdf.isPending || updateLearnerInfoMutation.isPending ? 'Uploading…' : 'Update'}
+                </label>
+                <button
+                  type="button"
+                  onClick={handleResumeRemove}
+                  className="px-3 py-1.5 text-sm font-medium rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100"
+                >
+                  Remove
+                </button>
+              </>
+            ) : (
+              <label className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md bg-primary-600 text-white hover:bg-primary-700 cursor-pointer">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={handleResumeUpload}
+                />
+                {extractPdf.isPending || updateLearnerInfoMutation.isPending ? 'Uploading…' : 'Upload PDF'}
+              </label>
+            )}
           </div>
         </div>
+        {resumeStatus && (
+          <p className="text-xs text-slate-600">
+            {resumeStatus}
+          </p>
+        )}
       </section>
 
       {/* Data & account actions */}
