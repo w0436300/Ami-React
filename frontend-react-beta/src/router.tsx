@@ -72,7 +72,6 @@ export const router = createBrowserRouter(
             { path: '/learning-path', element: <LearningPathPage /> },
             { path: '/skill-gap', element: <SkillGapPage /> },
             { path: '/analytics', element: <AnalyticsPage /> },
-            { path: '/analytics/active-goal', element: <AnalyticsPage /> },
             { path: '/example/refine-goal', element: <RefineGoalExamplePage /> },
           ],
         },
