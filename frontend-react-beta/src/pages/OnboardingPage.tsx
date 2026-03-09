@@ -1,8 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, InputField } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { useHasEnteredGoal } from '@/context/HasEnteredGoalContext';
+import { useActiveGoal } from '@/context/GoalsContext';
+import { usePersonas } from '@/api/endpoints/config';
 
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                         */
@@ -69,6 +71,9 @@ type OnboardingState = 'idle' | 'category-selected' | 'goal-refined' | 'preferen
 export function OnboardingPage() {
   const navigate = useNavigate();
   const { setHasEnteredGoal } = useHasEnteredGoal();
+  const { activeGoal, selectedGoalId } = useActiveGoal();
+  const { data: personasData } = usePersonas();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [learningGoal, setLearningGoal] = useState('');
   const [isRefining, setIsRefining] = useState(false);
@@ -76,6 +81,8 @@ export function OnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreferenceModule, setShowPreferenceModule] = useState(false);
   const [selectedPreferenceId, setSelectedPreferenceId] = useState<string | null>('hands-on');
+  const [resumeText, setResumeText] = useState('');
+  const personas = personasData?.personas ?? {};
 
   const pageState: OnboardingState = isSubmitting
     ? 'submitting'
@@ -114,12 +121,33 @@ export function OnboardingPage() {
   }, [learningGoal]);
 
   const handleBeginLearning = useCallback(() => {
+    const trimmed = learningGoal.trim();
+    if (!trimmed) return;
+    const personaKey = selectedPreferenceId;
+    // Build learnerInformation similar to old frontend: persona + optional resume summary
+    let learnerInformation = resumeText;
+    if (personaKey && personas[personaKey]) {
+      const dims = personas[personaKey].fslsm_dimensions;
+      const dimStr = Object.entries(dims)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(', ');
+      learnerInformation = `Learning Persona: ${personaKey} (initial FSLSM: ${dimStr}). ${learnerInformation}`;
+    }
+    // Ensure learnerInformation is never empty so SkillGapPage's guard passes
+    if (!learnerInformation) {
+      learnerInformation = `Learning goal: ${trimmed}.`;
+    }
     setIsSubmitting(true);
     setHasEnteredGoal(true);
-    setTimeout(() => {
-      navigate('/skill-gap');
-    }, 1200);
-  }, [navigate, setHasEnteredGoal]);
+    navigate('/skill-gap', {
+      state: {
+        goal: trimmed,
+        personaKey,
+        learnerInformation,
+        isGoalManagementFlow: false,
+      },
+    });
+  }, [learningGoal, selectedPreferenceId, personas, resumeText, navigate, setHasEnteredGoal]);
 
   const handleSkipPreference = useCallback(() => {
     setShowPreferenceModule(false);
@@ -318,18 +346,35 @@ export function OnboardingPage() {
               size="lg"
               onClick={handleBeginLearning}
               loading={false}
-              disabled={pageState === 'idle'}
+              disabled={pageState === 'idle' || !learningGoal.trim()}
               className="w-full sm:w-auto !bg-primary-600 hover:!bg-primary-700 !text-white px-10"
             >
               Begin Learning
             </Button>
             <div className="flex flex-wrap justify-center gap-3">
-              <Button variant="secondary" size="md" disabled={isSubmitting}>
-                Upload Your Resume (Optional)
-              </Button>
-              <Button variant="secondary" size="md" disabled={isSubmitting}>
-                Connect to your LinkedIn
-              </Button>
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    // Minimal placeholder: store filename into resumeText so it is visible to backend;
+                    // if you later wire extract-pdf-text, replace this with real text.
+                    setResumeText(`Resume file uploaded: ${file.name}`);
+                  }}
+                />
+                <Button
+                  variant="secondary"
+                  size="md"
+                  disabled={isSubmitting}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Upload Your Resume (Optional)
+                </Button>
+              </>
             </div>
           </div>
         </section>

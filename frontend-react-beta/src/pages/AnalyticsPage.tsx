@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button, Select } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { useAuthContext } from '@/context/AuthContext';
+import { useGoalsContext } from '@/context/GoalsContext';
+import { useActiveGoal } from '@/context/GoalsContext';
+import { useDashboardMetrics } from '@/api/endpoints/content';
 
 /* ------------------------------------------------------------------ */
 /*  Mock data                                                         */
@@ -21,13 +25,6 @@ const OVERVIEW_KPIS = [
   { title: 'Active Goals', value: '5', desc: 'Body text' },
   { title: 'At Risk', value: '--', desc: 'Body text' },
   { title: 'Best Performing', value: '--', desc: 'Body text' },
-];
-
-const ACTIVE_GOAL_KPIS = [
-  { title: 'Overall Progress', value: '26%', desc: 'Body text' },
-  { title: 'Quiz Performance', value: '5', desc: 'Body text' },
-  { title: 'Skills Status', value: '4', desc: 'Body text' },
-  { title: '--', value: '--', desc: 'Body text' },
 ];
 
 const OVERVIEW_GOALS = [
@@ -201,10 +198,31 @@ function AnalyticsOverview() {
 function AnalyticsActiveGoal() {
   const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState<TimeRange>('Last 7 days');
-  const [selectedGoalId, setSelectedGoalId] = useState(GOAL_OPTIONS[0].value);
   const [skillFilter, setSkillFilter] = useState<(typeof SKILL_MASTERY_FILTERS)[number]>('All');
 
-  const selectedGoalLabel = GOAL_OPTIONS.find((g) => g.value === selectedGoalId)?.label ?? 'Goal 1';
+  const { userId } = useAuthContext();
+  const { goals, selectedGoalId, setSelectedGoalId } = useGoalsContext();
+  const { activeGoal } = useActiveGoal();
+
+  const goalOptions = goals.map((g) => ({
+    value: String(g.id),
+    label: ((g.learner_profile?.goal_display_name as string | undefined) ?? g.learning_goal).slice(0, 50),
+  }));
+
+  const { data: metrics, isLoading } = useDashboardMetrics(
+    userId ?? undefined,
+    activeGoal?.id,
+  );
+
+  const overallProgress = metrics?.overall_progress ?? 0;
+  const sessionsCompleted = (activeGoal?.learning_path ?? []).filter(
+    (s: { if_learned?: boolean }) => s.if_learned,
+  ).length;
+  const totalSessions = activeGoal?.learning_path?.length ?? 0;
+  const skillsTracked = metrics?.skill_radar?.labels?.length ?? 0;
+  const selectedGoalLabel =
+    goalOptions.find((g) => g.value === String(selectedGoalId ?? ''))?.label ??
+    ((activeGoal?.learner_profile?.goal_display_name as string | undefined) ?? activeGoal?.learning_goal ?? 'Goal');
 
   return (
     <div className="space-y-6">
@@ -225,15 +243,17 @@ function AnalyticsActiveGoal() {
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="w-44">
-            <Select
-              options={GOAL_OPTIONS}
-              value={selectedGoalId}
-              onChange={(e) => setSelectedGoalId(e.target.value)}
-              aria-label="Select goal"
-              className="text-sm"
-            />
-          </div>
+          {goalOptions.length > 1 && (
+            <div className="w-44">
+              <Select
+                options={goalOptions}
+                value={String(selectedGoalId ?? '')}
+                onChange={(e) => setSelectedGoalId(Number(e.target.value))}
+                aria-label="Select goal"
+                className="text-sm"
+              />
+            </div>
+          )}
           <div className="flex gap-2">
             {TIME_OPTIONS.map((opt) => (
               <button
@@ -255,14 +275,40 @@ function AnalyticsActiveGoal() {
       {/* KPI cards + Next Step */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-3 grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {ACTIVE_GOAL_KPIS.map((kpi) => (
-            <div key={kpi.title} className="bg-white rounded-xl border border-slate-200 p-4">
-              <ClockIcon />
-              <p className="text-sm font-semibold text-slate-800 mt-2">{kpi.title}</p>
-              <p className="text-xl font-bold text-slate-900 mt-0.5">{kpi.value}</p>
-              <p className="text-xs text-slate-500 mt-1">{kpi.desc}</p>
-            </div>
-          ))}
+          {isLoading ? (
+            [1, 2, 3, 4].map((i) => <div key={i} className="h-24 bg-slate-100 rounded-xl animate-pulse" />)
+          ) : (
+            <>
+              <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <ClockIcon />
+                <p className="text-sm font-semibold text-slate-800 mt-2">Overall Progress</p>
+                <p className="text-xl font-bold text-slate-900 mt-0.5">
+                  {Math.round((overallProgress ?? 0) * 100)}%
+                </p>
+                <p className="text-xs text-slate-500 mt-1">Based on your completed sessions.</p>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <ClockIcon />
+                <p className="text-sm font-semibold text-slate-800 mt-2">Active Goals</p>
+                <p className="text-xl font-bold text-slate-900 mt-0.5">{goals.length}</p>
+                <p className="text-xs text-slate-500 mt-1">Total goals in your account.</p>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <ClockIcon />
+                <p className="text-sm font-semibold text-slate-800 mt-2">Sessions Completed</p>
+                <p className="text-xl font-bold text-slate-900 mt-0.5">
+                  {sessionsCompleted} / {totalSessions || '—'}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">For this learning goal.</p>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <ClockIcon />
+                <p className="text-sm font-semibold text-slate-800 mt-2">Skills Tracked</p>
+                <p className="text-xl font-bold text-slate-900 mt-0.5">{skillsTracked}</p>
+                <p className="text-xs text-slate-500 mt-1">From your analytics skill radar.</p>
+              </div>
+            </>
+          )}
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col">
           <h3 className="text-sm font-semibold text-slate-800">Next Step</h3>
@@ -279,7 +325,7 @@ function AnalyticsActiveGoal() {
         </div>
       </div>
 
-      {/* Skill mastery */}
+      {/* Skill mastery (still mock for now) */}
       <section className="bg-white rounded-xl border border-slate-200 p-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <h3 className="text-base font-semibold text-slate-800">Skill mastery</h3>

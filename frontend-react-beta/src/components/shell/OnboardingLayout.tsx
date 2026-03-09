@@ -1,7 +1,11 @@
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui';
+import { useAuthContext } from '@/context/AuthContext';
 
 export function OnboardingLayout() {
+  const navigate = useNavigate();
+  const { isAuthenticated, logout } = useAuthContext();
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
       {/* Minimal top bar — matches Figma: LOGO left, Sign in / Register right */}
@@ -14,12 +18,27 @@ export function OnboardingLayout() {
         </Link>
 
         <div className="flex items-center gap-2">
-          <Link to="/login">
-            <Button variant="secondary" size="sm">Sign in</Button>
-          </Link>
-          <Link to="/register">
-            <Button variant="primary" size="sm">Register</Button>
-          </Link>
+          {isAuthenticated ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                logout();
+                navigate('/login', { replace: true });
+              }}
+            >
+              Log out
+            </Button>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button variant="secondary" size="sm">Sign in</Button>
+              </Link>
+              <Link to="/register">
+                <Button variant="primary" size="sm">Register</Button>
+              </Link>
+            </>
+          )}
         </div>
       </header>
 

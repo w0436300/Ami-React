@@ -1,11 +1,32 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button, InputField } from '@/components/ui';
+import { useRegister } from '@/api/endpoints/auth';
+import { useAuthContext } from '@/context/AuthContext';
 
 export function RegisterPage() {
-  const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+  const { login } = useAuthContext();
+  const registerMutation = useRegister();
+
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!username.trim() || !password) return;
+    if (confirm !== password) return;
+    try {
+      const data = await registerMutation.mutateAsync({ username: username.trim(), password });
+      login(data);
+      navigate('/', { replace: true });
+    } catch {
+      setError('Failed to create account. Please try again.');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -16,19 +37,13 @@ export function RegisterPage() {
         </p>
       </div>
 
-      <form
-        className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          // TODO: wire up useRegister
-        }}
-      >
+      <form className="space-y-4" onSubmit={handleSubmit}>
         <InputField
-          label="Email"
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          label="Username"
+          type="text"
+          placeholder="your_username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           required
         />
         <InputField
@@ -48,8 +63,9 @@ export function RegisterPage() {
           error={confirm && confirm !== password ? 'Passwords do not match' : undefined}
           required
         />
-        <Button type="submit" className="w-full">
-          Create account
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <Button type="submit" className="w-full" disabled={registerMutation.isPending || confirm !== password}>
+          {registerMutation.isPending ? 'Creating account…' : 'Create account'}
         </Button>
       </form>
 

@@ -27,3 +27,13 @@ docs/diagrams/
 .idea/
 .claude/
 CLAUDE.md
+
+node_modules/
+.gitignore
+
+.venv/
+.env
+backend/
+backend/.env
+frontend/
+frontend/.env

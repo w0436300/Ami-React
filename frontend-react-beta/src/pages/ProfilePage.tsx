@@ -1,41 +1,80 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Toggle } from '@/components/ui';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button, Toggle } from '@/components/ui';
+import { useAuthContext } from '@/context/AuthContext';
+import { useGoalsContext } from '@/context/GoalsContext';
+import { useActiveGoal } from '@/context/GoalsContext';
+import { useDashboardMetrics, useDeleteUserData } from '@/api/endpoints/content';
+import { useDeleteUser } from '@/api/endpoints/auth';
+import { useAppConfig } from '@/api/endpoints/config';
 
-/* ------------------------------------------------------------------ */
-/*  Mock data                                                         */
-/* ------------------------------------------------------------------ */
-
-const PROFILE = {
-  name: 'Name',
-  email: 'demo@genmentor.ai',
-  memberSince: 'February 2026',
-  plan: 'Free',
-  tags: ['Visual Learner', 'Balanced'],
-};
-
-const ACTIVITY = {
-  goalsCreated: 4,
-  sessionsCompleted: 12,
-  totalStudyTime: '8.5 hrs',
-  currentStreak: 5,
-  quizzesPassed: '9/12',
-};
-
-const TALENT_FILE = {
-  name: 'Resume_Alex_Johnson_2028.pdf',
-  size: '142 KB',
-  lastUpdated: 'Feb 10',
-};
-
-/* ------------------------------------------------------------------ */
-/*  Page component                                                     */
-/* ------------------------------------------------------------------ */
+function formatDuration(secs: number): string {
+  if (secs <= 0 || !Number.isFinite(secs)) return '—';
+  if (secs < 60) return `${Math.round(secs)}s`;
+  if (secs < 3600) return `${Math.round(secs / 60)}m`;
+  const h = Math.floor(secs / 3600);
+  const m = Math.round((secs % 3600) / 60);
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
 
 export function ProfilePage() {
-  const [learningStyle, setLearningStyle] = useState('Visual Learner');
+  const navigate = useNavigate();
+  const { userId, logout } = useAuthContext();
+  const { goals, refreshGoals, updateGoal } = useGoalsContext();
+  const { activeGoal } = useActiveGoal();
+  const { data: config } = useAppConfig();
+
+  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics(
+    userId ?? undefined,
+    activeGoal?.id,
+  );
+  const deleteUserDataMutation = useDeleteUserData();
+  const deleteUserMutation = useDeleteUser();
+
+  const [learningStyle, setLearningStyle] = useState('Balanced');
   const [aiDifficulty, setAiDifficulty] = useState(true);
   const [bilingualContent, setBilingualContent] = useState(false);
+  const [showDeleteDataConfirm, setShowDeleteDataConfirm] = useState(false);
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+
+  const profileTags: string[] = [];
+  if (activeGoal?.learner_profile?.goal_display_name) {
+    profileTags.push('Active learner');
+  }
+  if (activeGoal?.learner_profile?.learning_preferences?.fslsm_dimensions) {
+    profileTags.push('FSLSM profile available');
+  }
+  if (profileTags.length === 0) profileTags.push('Learner');
+
+  const fslsmDims =
+    (activeGoal?.learner_profile?.learning_preferences
+      ?.fslsm_dimensions as Record<string, number> | undefined) ?? {};
+
+  const handleRestartOnboarding = async () => {
+    if (!userId) return;
+    try {
+      await deleteUserDataMutation.mutateAsync(userId);
+      refreshGoals();
+      navigate('/onboarding');
+    } catch {
+      // ignore
+    } finally {
+      setShowDeleteDataConfirm(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!userId) return;
+    try {
+      await deleteUserMutation.mutateAsync();
+      logout();
+      navigate('/login');
+    } catch {
+      // ignore
+    } finally {
+      setShowDeleteAccountConfirm(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -47,9 +86,12 @@ export function ProfilePage() {
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-semibold text-slate-900">{PROFILE.name}</h2>
+          <h2 className="text-lg font-semibold text-slate-900">My Profile</h2>
+          <p className="mt-0.5 text-sm text-slate-500">
+            @{userId ?? 'guest'}
+          </p>
           <div className="flex flex-wrap gap-2 mt-2">
-            {PROFILE.tags.map((tag) => (
+            {profileTags.map((tag) => (
               <span
                 key={tag}
                 className="text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600"
@@ -60,18 +102,24 @@ export function ProfilePage() {
           </div>
         </div>
         <div className="flex items-center gap-4 shrink-0">
-          <Link
-            to="#"
+          {/* Edit profile 可后续接入真实编辑，这里暂留占位 */}
+          <button
+            type="button"
             className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors"
+            disabled
           >
             Edit Profile
-          </Link>
-          <Link
-            to="/login"
+          </button>
+          <button
+            type="button"
             className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors"
+            onClick={() => {
+              logout();
+              navigate('/login');
+            }}
           >
             Sign out
-          </Link>
+          </button>
         </div>
       </section>
 
@@ -83,19 +131,25 @@ export function ProfilePage() {
           <dl className="space-y-3 text-sm">
             <div>
               <dt className="text-slate-500 font-medium">Email</dt>
-              <dd className="text-slate-900 mt-0.5">{PROFILE.email}</dd>
+              <dd className="text-slate-900 mt-0.5">
+                {userId ? `${userId}@example` : 'Not connected'}
+              </dd>
             </div>
             <div>
               <dt className="text-slate-500 font-medium">Member since</dt>
-              <dd className="text-slate-900 mt-0.5">{PROFILE.memberSince}</dd>
+              <dd className="text-slate-900 mt-0.5">Not tracked yet</dd>
             </div>
             <div>
               <dt className="text-slate-500 font-medium">Plan</dt>
               <dd className="mt-0.5 flex items-center gap-2">
-                <span className="text-slate-900">{PROFILE.plan}</span>
-                <Link to="#" className="text-slate-600 hover:text-slate-900 font-medium text-xs">
+                <span className="text-slate-900">Free</span>
+                <button
+                  type="button"
+                  className="text-slate-600 hover:text-slate-900 font-medium text-xs"
+                  disabled
+                >
                   Upgrade →
-                </Link>
+                </button>
               </dd>
             </div>
           </dl>
@@ -107,26 +161,35 @@ export function ProfilePage() {
           <dl className="space-y-3 text-sm">
             <div className="flex justify-between">
               <dt className="text-slate-500">Goals created</dt>
-              <dd className="text-slate-900 font-medium">{ACTIVITY.goalsCreated}</dd>
+              <dd className="text-slate-900 font-medium">{goals.length}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-slate-500">Sessions completed</dt>
-              <dd className="text-slate-900 font-medium">{ACTIVITY.sessionsCompleted}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-slate-500">Total study time</dt>
-              <dd className="text-slate-900 font-bold">{ACTIVITY.totalStudyTime}</dd>
-            </div>
-            <div className="flex justify-between items-center">
-              <dt className="text-slate-500">Current streak</dt>
-              <dd className="text-slate-900 font-bold flex items-center gap-1">
-                <span className="text-amber-500" aria-hidden>🔥</span>
-                {ACTIVITY.currentStreak} days
+              <dd className="text-slate-900 font-medium">
+                {metricsLoading || !metrics
+                  ? '—'
+                  : `${metrics.sessions_completed} / ${metrics.total_sessions_in_path}`}
               </dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-slate-500">Quizzes passed</dt>
-              <dd className="text-slate-900 font-medium">{ACTIVITY.quizzesPassed}</dd>
+              <dt className="text-slate-500">Total study time</dt>
+              <dd className="text-slate-900 font-bold">
+                {metricsLoading || !metrics ? '—' : formatDuration(metrics.total_learning_time_sec)}
+              </dd>
+            </div>
+            <div className="flex justify-between items-center">
+              <dt className="text-slate-500">Latest mastery rate</dt>
+              <dd className="text-slate-900 font-bold">
+                {metricsLoading || !metrics || metrics.latest_mastery_rate == null
+                  ? '—'
+                  : `${Math.round(metrics.latest_mastery_rate * 100)}%`}
+              </dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-slate-500">Motivational triggers</dt>
+              <dd className="text-slate-900 font-medium">
+                {metricsLoading || !metrics ? '—' : metrics.motivational_triggers_count}
+              </dd>
             </div>
           </dl>
         </section>
@@ -192,25 +255,98 @@ export function ProfilePage() {
       {/* TALENT ASSETS */}
       <section className="bg-white rounded-xl border border-slate-200 p-5">
         <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Talent Assets</h3>
-        <div className="border border-slate-200 rounded-lg p-4 bg-slate-50 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
-            <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">{TALENT_FILE.name}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{TALENT_FILE.size} · Last updated {TALENT_FILE.lastUpdated}</p>
+        <div className="border border-slate-200 rounded-lg p-4 bg-slate-50 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-lg bg-slate-200 flex items-center justify-center shrink-0">
+              <svg className="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-900 truncate">No resume connected</p>
+              <p className="text-xs text-slate-500 mt-0.5">Connect your resume or LinkedIn profile (coming soon).</p>
+            </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <Link to="#" className="text-sm font-medium text-slate-700 hover:text-slate-900">
-              Update
-            </Link>
-            <button type="button" className="text-sm font-medium text-slate-700 hover:text-slate-900">
-              Remove
+            <button
+              type="button"
+              className="text-sm font-medium text-slate-700 hover:text-slate-900"
+              disabled
+            >
+              Upload
             </button>
           </div>
         </div>
+      </section>
+
+      {/* Data & account actions */}
+      <section className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Data & Account</h3>
+        {!showDeleteDataConfirm ? (
+          <button
+            type="button"
+            onClick={() => setShowDeleteDataConfirm(true)}
+            className="text-sm text-slate-600 hover:text-slate-800 underline"
+          >
+            Restart onboarding (clear all data)
+          </button>
+        ) : (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
+            <p className="text-sm text-amber-800">
+              This will delete all your goals, learning history, and profile data. Are you sure?
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={handleRestartOnboarding}
+                loading={deleteUserDataMutation.isPending}
+                className="!bg-amber-600 hover:!bg-amber-700 !text-white"
+              >
+                Yes, restart
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowDeleteDataConfirm(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!showDeleteAccountConfirm ? (
+          <button
+            type="button"
+            onClick={() => setShowDeleteAccountConfirm(true)}
+            className="text-sm text-red-500 hover:text-red-700 underline"
+          >
+            Delete account
+          </button>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 space-y-2">
+            <p className="text-sm text-red-800">
+              This will permanently delete your account and all data. This cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={handleDeleteAccount}
+                loading={deleteUserMutation?.isPending}
+                className="!bg-red-600 hover:!bg-red-700 !text-white"
+              >
+                Delete account
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setShowDeleteAccountConfirm(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );
