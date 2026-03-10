@@ -10,20 +10,37 @@ const TIP_INTERVAL_MS = 6_000;
 const TIP_SHOW_DELAY_MS = 4_000;
 
 /* ------------------------------------------------------------------ */
-/*  Pulsing radar animation (pure CSS/SVG)                             */
+/*  Center loading glyph (subtle, cool-toned)                         */
 /* ------------------------------------------------------------------ */
 
-function PulsingRadar() {
+function CenterSpinner() {
   return (
-    <div className="relative w-20 h-20 flex items-center justify-center">
-      {/* Outer pulsing rings */}
-      <div className="absolute inset-0 rounded-full border-2 border-amber-300/40 animate-[ping_2.5s_ease-out_infinite]" />
-      <div className="absolute inset-2 rounded-full border-2 border-amber-400/30 animate-[ping_2.5s_ease-out_0.8s_infinite]" />
+    <div className="relative w-16 h-16 flex items-center justify-center">
+      {/* Outer static ring */}
+      <div className="absolute inset-0 rounded-full border border-[#DCE6F2] bg-[#F3F7FB]" />
 
-      {/* Static center circle */}
-      <div className="relative w-10 h-10 rounded-full bg-amber-100 border-2 border-amber-400 flex items-center justify-center shadow-sm">
-        {/* Sparkle / brain icon */}
-        <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      {/* Rotating arc */}
+      <svg
+        className="absolute w-full h-full animate-spin-slow text-[#5B8DEF]"
+        viewBox="0 0 24 24"
+      >
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeDasharray="40 40"
+          strokeDashoffset="20"
+          strokeLinecap="round"
+        />
+      </svg>
+
+      {/* Inner core */}
+      <div className="relative w-8 h-8 rounded-full bg-white border border-[#DCE6F2] flex items-center justify-center shadow-sm">
+        {/* Simple brain/spark icon, cool-toned */}
+        <svg className="w-5 h-5 text-[#5B8DEF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -49,22 +66,28 @@ function StepProgress({ steps, activeIndex }: { steps: string[]; activeIndex: nu
         return (
           <li key={`${i}-${msg.slice(0, 20)}`} className="flex items-start gap-2.5 text-sm">
             {done ? (
-              <svg className="w-4 h-4 mt-0.5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg
+                className="w-4 h-4 mt-0.5 text-teal-500 shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
             ) : active ? (
               <div className="w-4 h-4 mt-0.5 shrink-0 flex items-center justify-center">
-                <div className="w-3 h-3 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+                <div className="w-3 h-3 rounded-full border-2 border-[#5B8DEF] border-t-transparent animate-spin" />
               </div>
             ) : (
               <div className="w-4 h-4 mt-0.5 shrink-0 flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full bg-amber-200" />
+                <div className="w-2 h-2 rounded-full bg-[#D0DEEF]" />
               </div>
             )}
             <span className={cn(
-              done && 'text-amber-700/70',
-              active && 'text-amber-800 font-medium',
-              !done && !active && 'text-amber-400',
+              done && 'text-teal-700',
+              active && 'text-[#1F2A44] font-medium',
+              !done && !active && 'text-[#A2B3CC]',
             )}>
               {msg}
             </span>
@@ -97,13 +120,13 @@ function TipCarousel({ tips }: { tips: string[] }) {
 
   if (!tips.length) return null;
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-5 py-4 text-center">
-      <p className="text-xs font-medium uppercase tracking-wider text-amber-500 mb-2">
+    <div className="rounded-xl border border-[#DCE6F2] bg-[#F3F7FB] px-5 py-4 text-center">
+      <p className="text-xs font-medium uppercase tracking-wider text-[#6B7A90] mb-2">
         Tip
       </p>
       <p
         className={cn(
-          'text-sm text-amber-700 leading-relaxed transition-opacity duration-250',
+          'text-sm text-[#4A5975] leading-relaxed transition-opacity duration-250',
           fadeIn ? 'opacity-100' : 'opacity-0',
         )}
       >
@@ -164,26 +187,26 @@ export function PathGenerationLoading({
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+    <div className="flex flex-col items-center justify-start min-h-[60vh] px-4 pt-20 pb-12">
       {/* Primary panel */}
       <div className="w-full max-w-md space-y-6">
         {/* Radar animation */}
         <div className="flex justify-center">
-          <PulsingRadar />
+          <CenterSpinner />
         </div>
 
         {/* Title */}
         <div className="text-center space-y-1">
-          <h2 className="text-lg font-semibold text-amber-900">
+          <h2 className="text-lg font-semibold text-[#1F2A44]">
             {title}
           </h2>
           {subtitle && (
-            <p className="text-sm text-amber-700 max-w-sm mx-auto">
+            <p className="text-sm text-[#6B7A90] max-w-sm mx-auto">
               {subtitle}
             </p>
           )}
           {goalTitle != null && goalTitle !== '' && (
-            <p className="text-xs text-amber-600 truncate max-w-xs mx-auto">
+            <p className="text-xs text-[#6B7A90] truncate max-w-xs mx-auto">
               {goalTitle}
             </p>
           )}
@@ -192,9 +215,9 @@ export function PathGenerationLoading({
         {/* Progress bar */}
         {stepCount > 0 && (
           <div className="w-full space-y-1">
-            <div className="h-1.5 w-full rounded-full bg-amber-100 overflow-hidden">
+            <div className="h-1.5 w-full rounded-full bg-[#E8F0F7] overflow-hidden">
               <div
-                className="h-full rounded-full bg-amber-500 transition-[width] duration-700 ease-out"
+                className="h-full rounded-full bg-[#5B8DEF] transition-[width] duration-700 ease-out"
                 style={{ width: `${Math.min(95, ((stepIndex + 1) / stepCount) * 90 + 5)}%` }}
               />
             </div>
@@ -203,7 +226,7 @@ export function PathGenerationLoading({
 
         {/* Step checklist */}
         {stepCount > 0 && (
-          <div className="bg-white border border-amber-200 rounded-xl px-5 py-4">
+          <div className="bg-white border border-[#DCE6F2] rounded-xl px-5 py-4 shadow-sm">
             <StepProgress steps={steps} activeIndex={stepIndex} />
           </div>
         )}

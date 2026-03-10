@@ -1,10 +1,9 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
 import { Button } from '@/components/ui';
 import { useAuthContext } from '@/context/AuthContext';
 
 export function OnboardingLayout() {
-  const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuthContext();
+  const { isAuthenticated } = useAuthContext();
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -19,16 +18,11 @@ export function OnboardingLayout() {
 
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                logout();
-                navigate('/login', { replace: true });
-              }}
-            >
-              Log out
-            </Button>
+            <Link to="/dashboard">
+              <Button variant="secondary" size="sm">
+                Dashboard
+              </Button>
+            </Link>
           ) : (
             <>
               <Link to="/login">

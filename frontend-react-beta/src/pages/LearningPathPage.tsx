@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui';
 import { SessionCard } from '@/components/learning/SessionCard';
+import { PathGenerationLoading } from '@/components/learning/PathGenerationLoading';
 import { cn } from '@/lib/cn';
 import { useAuthContext } from '@/context/AuthContext';
 import { useGoalsContext } from '@/context/GoalsContext';
@@ -32,6 +33,26 @@ function formatFeedbackSummary(summary: unknown): string {
   }
   return String(summary);
 }
+
+const LEARNING_PATH_LOADING = {
+  title: 'Building your learning path',
+  steps: [
+    'Analyzing your skill gaps...',
+    'Reviewing weak knowledge areas...',
+    'Matching the right difficulty level...',
+    'Building your personalized learning path...',
+    'Finalizing your next best steps...',
+  ],
+  tips: [
+    'Short, frequent review sessions usually work better than one long session.',
+    'Practice the hardest items first when your attention is highest.',
+    'Mixing reading, listening, and recall improves retention.',
+    'Repeating a concept in different contexts strengthens memory.',
+    'Small daily progress is usually better than occasional cramming.',
+    'Teaching what you learn to someone else deepens understanding.',
+    'Taking breaks between study blocks boosts long-term recall.',
+  ],
+} as const;
 
 export function LearningPathPage() {
   const navigate = useNavigate();
@@ -163,6 +184,20 @@ export function LearningPathPage() {
     );
   }
 
+  const goalTitle =
+    (activeGoal.learner_profile?.goal_display_name as string | undefined) ?? activeGoal.learning_goal;
+
+  if (isScheduling && learningPath.length === 0) {
+    return (
+      <PathGenerationLoading
+        title={LEARNING_PATH_LOADING.title}
+        steps={LEARNING_PATH_LOADING.steps}
+        tips={LEARNING_PATH_LOADING.tips}
+        goalTitle={goalTitle}
+      />
+    );
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header: Current goal + Goal dropdown */}
@@ -253,9 +288,28 @@ export function LearningPathPage() {
         {/* Session list */}
         <div className="flex-1 space-y-3">
           {learningPath.length === 0 && !isScheduling ? (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-slate-500 text-sm">
-              No sessions yet. Your learning path will appear here once generated.
-            </div>
+            hasScheduledRef.current ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-slate-600 text-sm space-y-3">
+                <p className="font-medium text-slate-800">
+                  We couldn’t finish building your learning path.
+                </p>
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
+                  This can happen if the server took too long or the connection was interrupted. You can refresh your goals or come back and try again in a moment.
+                </p>
+                <div className="flex items-center justify-center gap-3 pt-2">
+                  <Button size="sm" onClick={refreshGoals}>
+                    Refresh goals
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => navigate('/goals')}>
+                    Back to goals
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center text-slate-500 text-sm">
+                No sessions yet. Your learning path will appear here once generated.
+              </div>
+            )
           ) : showModuleMap ? (
             <div className="space-y-1">
               <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-3">Module View</p>

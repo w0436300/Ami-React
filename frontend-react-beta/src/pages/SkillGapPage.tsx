@@ -312,15 +312,9 @@ export function SkillGapPage() {
     // Wait for config so we use the correct level labels (backend uses lowercase like "unlearned")
     if (hasFiredRef.current || !config || !state?.goal || !state?.learnerInformation) return;
 
-    // In dev (React StrictMode / HMR), this page can mount twice; avoid re-firing the same request.
-    try {
-      const key = `skillgap:${state.goal}::${state.learnerInformation}`;
-      if (sessionStorage.getItem(key) === '1') return;
-      sessionStorage.setItem(key, '1');
-    } catch {
-      // ignore
-    }
-
+    // Prevent double-fire in the same mount (e.g. React StrictMode). Do NOT skip based on
+    // sessionStorage: after navigating away and back, component remounts with empty state,
+    // so we must call the API again to get skill gaps for the current goal.
     hasFiredRef.current = true;
     setIsLoading(true);
     setError(null);
