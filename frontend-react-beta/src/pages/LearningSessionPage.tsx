@@ -91,9 +91,7 @@ export function LearningSessionPage() {
     if (goalId == null || sessionIndex == null) navigate('/learning-path', { replace: true });
   }, [goalId, sessionIndex, navigate]);
 
-  const { data: runtimeStateData } = useGoalRuntimeState(userId ?? undefined, goalId ?? undefined);
-  const runtimeSession = runtimeStateData?.sessions.find((s) => s.session_index === sessionIndex);
-  const navigationMode = runtimeSession?.navigation_mode ?? 'free';
+  const { data: runtimeStateData, refetch: refetchRuntime } = useGoalRuntimeState(userId ?? undefined, goalId ?? undefined);
 
   const { data: contentCacheResult, isLoading: isCheckingCache } = useGetLearningContent(
     userId ?? undefined,
@@ -191,9 +189,9 @@ export function LearningSessionPage() {
   }, [userId, goalId, sessionIndex, config?.motivational_trigger_interval_secs]);
 
   const [masteryResult, setMasteryResult] = useState<MasteryEvaluationResponse | null>(null);
-  const canComplete = runtimeSession?.can_complete ?? true;
-  const linearMasteryGate = navigationMode === 'linear' && masteryResult != null && !masteryResult.is_mastered;
-  const isCompleteEnabled = canComplete && !linearMasteryGate;
+  const [sessionCompleted, setSessionCompleted] = useState(false);
+  const hasMastered = masteryResult?.is_mastered === true;
+  const isCompleteEnabled = hasMastered;
 
   // Chat
   const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
@@ -326,11 +324,26 @@ export function LearningSessionPage() {
         session_index: sessionIndex,
       });
       if (res.goal) updateGoal(goalId, res.goal);
-      navigate('/learning-path');
+      setSessionCompleted(true);
+      void refetchRuntime();
     } catch {
       /* ignore */
     }
-  }, [userId, goalId, sessionIndex, completeSessionMutation, updateGoal, navigate]);
+  }, [userId, goalId, sessionIndex, completeSessionMutation, updateGoal, refetchRuntime]);
+
+  const totalSessions = activeGoal?.learning_path?.length ?? 0;
+  const hasNextSession = sessionIndex != null && sessionIndex + 1 < totalSessions;
+
+  const handleNextSession = useCallback(() => {
+    if (goalId == null || sessionIndex == null || !hasNextSession) return;
+    const nextIdx = sessionIndex + 1;
+    if (userId) {
+      sessionActivityMutation
+        .mutateAsync({ user_id: userId, goal_id: goalId, session_index: nextIdx, event_type: 'start' })
+        .catch(() => {});
+    }
+    navigate('/learning-session', { state: { goalId, sessionIndex: nextIdx } });
+  }, [goalId, sessionIndex, hasNextSession, userId, sessionActivityMutation, navigate]);
 
   if (goalId == null || sessionIndex == null) return null;
 
@@ -507,7 +520,7 @@ export function LearningSessionPage() {
               userId={userId!}
               goalId={goalId}
               sessionIndex={sessionIndex}
-              onMasteryResult={(r) => setMasteryResult(r)}
+              onMasteryResult={(r) => { setMasteryResult(r); void refetchRuntime(); }}
               ensureCached={ensureCached}
             />
           </div>
@@ -568,16 +581,51 @@ export function LearningSessionPage() {
           </div>
         )}
 
-        <div className="flex justify-end pt-2 pb-8">
-          <Button
-            size="lg"
-            onClick={handleComplete}
-            loading={completeSessionMutation.isPending}
-            disabled={!isCompleteEnabled || completeSessionMutation.isPending}
-          >
-            {completeSessionMutation.isPending ? 'Completing…' : 'Complete Session'}
-          </Button>
-        </div>
+        {sessionCompleted ? (
+          <div className="rounded-xl border border-green-300 bg-green-50 p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <svg className="w-8 h-8 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="font-semibold text-green-800">Session completed!</p>
+                <p className="text-sm text-green-600">
+                  {hasNextSession
+                    ? 'Great job! Ready for the next session?'
+                    : 'Congratulations! You have completed all sessions in this learning path.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              {hasNextSession && (
+                <Button size="lg" onClick={handleNextSession}>
+                  Next Session →
+                </Button>
+              )}
+              <Button size="lg" variant="secondary" onClick={() => navigate('/learning-path')}>
+                Back to Learning Path
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-end gap-2 pt-2 pb-8">
+            <Button
+              size="lg"
+              onClick={handleComplete}
+              loading={completeSessionMutation.isPending}
+              disabled={!isCompleteEnabled || completeSessionMutation.isPending}
+            >
+              {completeSessionMutation.isPending ? 'Completing…' : 'Complete Session'}
+            </Button>
+            {!hasMastered && (
+              <p className="text-xs text-slate-400">
+                {masteryResult
+                  ? `Score ${Math.round(masteryResult.score_percentage)}% — need ${Math.round(masteryResult.threshold)}% to unlock`
+                  : 'Complete the quiz to unlock'}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Inline chatbot */}
