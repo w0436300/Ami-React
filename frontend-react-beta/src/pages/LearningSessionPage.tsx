@@ -19,6 +19,7 @@ import {
   generateLearningContentApi,
 } from '@/api/endpoints/content';
 import { useChatWithTutor } from '@/api/endpoints/chat';
+import { SessionLoadingPanel } from '@/components/learning/SessionLoadingPanel';
 import type { MasteryEvaluationResponse, ContentSection } from '@/types';
 
 interface LocationState {
@@ -368,14 +369,7 @@ export function LearningSessionPage() {
   const sessionTitle = (pathSession?.title as string | undefined) ?? `Session ${sessionIndex + 1}`;
 
   if (isCheckingCache || isGenerating) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-96 space-y-4 text-slate-500">
-        <div className="w-8 h-8 border-4 border-primary-400 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm">
-          {isGenerating ? 'Generating personalised content… this may take a minute.' : 'Loading content…'}
-        </p>
-      </div>
-    );
+    return <SessionLoadingPanel sessionTitle={sessionTitle} />;
   }
 
   if (generateError) {

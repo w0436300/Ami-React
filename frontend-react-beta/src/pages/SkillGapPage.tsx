@@ -13,6 +13,49 @@ import {
 } from '@/api/endpoints/skillGap';
 import { createGoalApi } from '@/api/endpoints/goals';
 import { syncProfileApi } from '@/api/endpoints/profile';
+import { PathGenerationLoading } from '@/components/learning/PathGenerationLoading';
+
+/* ------------------------------------------------------------------ */
+/*  Loading stage copy (reused for skill gap vs learning path)        */
+/* ------------------------------------------------------------------ */
+
+const SKILL_GAP_LOADING = {
+  title: 'Building your skill gap profile',
+  subtitle: "We're analyzing your goal and identifying the most important skills to improve first.",
+  steps: [
+    'Understanding your learning goal...',
+    'Breaking down required skills...',
+    'Checking your current gaps...',
+    'Identifying priority improvement areas...',
+    'Preparing your skill gap analysis...',
+  ],
+  tips: [
+    'Tip: Clear goals lead to more accurate learning recommendations.',
+    'Tip: Finding weak spots early helps you improve faster.',
+    'Tip: Skill gaps are easier to close when broken into smaller targets.',
+    'Tip: Strong learning plans start with honest assessment.',
+  ],
+};
+
+const LEARNING_PATH_LOADING = {
+  title: 'Building your learning path',
+  steps: [
+    'Analyzing your skill gaps...',
+    'Reviewing weak knowledge areas...',
+    'Matching the right difficulty level...',
+    'Building your personalized learning path...',
+    'Finalizing your next best steps...',
+  ],
+  tips: [
+    'Short, frequent review sessions usually work better than one long session.',
+    'Practice the hardest items first when your attention is highest.',
+    'Mixing reading, listening, and recall improves retention.',
+    'Repeating a concept in different contexts strengthens memory.',
+    'Small daily progress is usually better than occasional cramming.',
+    'Teaching what you learn to someone else deepens understanding.',
+    'Taking breaks between study blocks boosts long-term recall.',
+  ],
+};
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -433,22 +476,13 @@ export function SkillGapPage() {
 
   if (isLoading && !identifyResponse) {
     return (
-      <div className="max-w-3xl space-y-6">
-        <div className="bg-primary-50 border border-primary-200 rounded-lg px-4 py-3 text-sm text-primary-800 flex items-center gap-2">
-          <span className="inline-block w-4 h-4 border-2 border-primary-400 border-t-transparent rounded-full animate-spin shrink-0" />
-          Analysing skill gaps for <strong className="ml-1">{state.goal}</strong>…
-        </div>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white rounded-xl border border-slate-200 p-6 space-y-4 animate-pulse">
-            <div className="flex justify-between">
-              <div className="h-5 w-48 bg-slate-200 rounded" />
-              <div className="h-5 w-24 bg-slate-100 rounded-full" />
-            </div>
-            <div className="h-6 bg-slate-100 rounded" />
-            <div className="h-6 bg-slate-100 rounded" />
-          </div>
-        ))}
-      </div>
+      <PathGenerationLoading
+        title={SKILL_GAP_LOADING.title}
+        subtitle={SKILL_GAP_LOADING.subtitle}
+        steps={SKILL_GAP_LOADING.steps}
+        tips={SKILL_GAP_LOADING.tips}
+        goalTitle={state.goal}
+      />
     );
   }
 
@@ -460,6 +494,17 @@ export function SkillGapPage() {
           Back to Onboarding
         </Button>
       </div>
+    );
+  }
+
+  if (isScheduling) {
+    return (
+      <PathGenerationLoading
+        title={LEARNING_PATH_LOADING.title}
+        steps={LEARNING_PATH_LOADING.steps}
+        tips={LEARNING_PATH_LOADING.tips}
+        goalTitle={refinedGoal || state?.goal || ''}
+      />
     );
   }
 
