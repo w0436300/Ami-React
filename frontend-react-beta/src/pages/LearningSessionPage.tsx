@@ -84,12 +84,29 @@ export function LearningSessionPage() {
   const { activeGoal } = useActiveGoal();
 
   const state = location.state as LocationState | null;
-  const goalId = state?.goalId;
-  const sessionIndex = state?.sessionIndex;
+
+  const resolvedGoalId = (() => {
+    if (state?.goalId != null) return state.goalId;
+    return activeGoal?.id ?? null;
+  })();
+
+  const resolvedSessionIndex = (() => {
+    if (state?.sessionIndex != null) return state.sessionIndex;
+    if (!activeGoal?.learning_path) return null;
+    const idx = activeGoal.learning_path.findIndex(
+      (s) => !s.if_learned,
+    );
+    return idx >= 0 ? idx : null;
+  })();
+
+  const goalId = resolvedGoalId as number;
+  const sessionIndex = resolvedSessionIndex as number;
 
   useEffect(() => {
-    if (goalId == null || sessionIndex == null) navigate('/learning-path', { replace: true });
-  }, [goalId, sessionIndex, navigate]);
+    if (resolvedGoalId == null || resolvedSessionIndex == null) {
+      navigate('/learning-path', { replace: true });
+    }
+  }, [resolvedGoalId, resolvedSessionIndex, navigate]);
 
   const { data: runtimeStateData, refetch: refetchRuntime } = useGoalRuntimeState(userId ?? undefined, goalId ?? undefined);
 
