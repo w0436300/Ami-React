@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Toggle } from '@/components/ui';
 import { useAuthContext } from '@/context/AuthContext';
@@ -6,9 +6,24 @@ import { useGoalsContext } from '@/context/GoalsContext';
 import { useActiveGoal } from '@/context/GoalsContext';
 import { useDeleteUserData, useUpdateLearnerInformation } from '@/api/endpoints/content';
 import { useBehavioralMetrics } from '@/api/endpoints/metrics';
-import { useDeleteUser } from '@/api/endpoints/auth';
+import { useDeleteUser, useAuthMe } from '@/api/endpoints/auth';
 import { useAppConfig } from '@/api/endpoints/config';
 import { useExtractPdfText } from '@/api/endpoints/pdf';
+import {
+  getLearningStylePreference,
+  setLearningStylePreference,
+  LEARNING_STYLE_OPTIONS,
+} from '@/lib/learningStylePreference';
+import {
+  getMemberSinceIso,
+  formatMemberSinceDisplay,
+  earliestGoalTimestampIso,
+} from '@/lib/memberSince';
+import {
+  getAvatarDataUrl,
+  setAvatarFromFile,
+  clearAvatar,
+} from '@/lib/avatarStorage';
 
 function formatDuration(secs: number): string {
   if (secs <= 0 || !Number.isFinite(secs)) return '—';
@@ -26,6 +41,7 @@ export function ProfilePage() {
   const { activeGoal } = useActiveGoal();
   const { data: config } = useAppConfig();
 
+  const { data: authMe } = useAuthMe(Boolean(userId));
   const { data: metrics, isLoading: metricsLoading } = useBehavioralMetrics(
     userId ?? undefined,
     activeGoal?.id,
@@ -35,13 +51,24 @@ export function ProfilePage() {
   const updateLearnerInfoMutation = useUpdateLearnerInformation();
   const extractPdf = useExtractPdfText();
 
-  const [learningStyle, setLearningStyle] = useState('Balanced');
+  const [learningStyle, setLearningStyle] = useState(() => getLearningStylePreference());
+  useEffect(() => {
+    setLearningStyle(getLearningStylePreference());
+  }, [activeGoal?.id]);
   const [aiDifficulty, setAiDifficulty] = useState(true);
   const [bilingualContent, setBilingualContent] = useState(false);
   const [showDeleteDataConfirm, setShowDeleteDataConfirm] = useState(false);
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
   const [resumeName, setResumeName] = useState<string | null>(null);
   const [resumeStatus, setResumeStatus] = useState<string | null>(null);
+  const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
+  const [avatarMessage, setAvatarMessage] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setAvatarDataUrl(getAvatarDataUrl(userId));
+    setAvatarMessage(null);
+  }, [userId]);
 
   const profileTags: string[] = [];
   if (activeGoal?.learner_profile?.goal_display_name) {
@@ -51,6 +78,13 @@ export function ProfilePage() {
     profileTags.push(learningStyle);
   }
   if (profileTags.length === 0) profileTags.push('Learner');
+
+  // Member since: prefer auth/me created_at, then first-login localStorage, then earliest goal timestamp
+  const memberSinceIso =
+    (authMe as { created_at?: string } | undefined)?.created_at ||
+    getMemberSinceIso(userId) ||
+    earliestGoalTimestampIso(goals as unknown as Array<Record<string, unknown>>);
+  const memberSinceDisplay = formatMemberSinceDisplay(memberSinceIso);
 
   const fslsmDims =
     (activeGoal?.learner_profile?.learning_preferences
@@ -160,13 +194,84 @@ export function ProfilePage() {
   };
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
       {/* Top profile card */}
       <section className="bg-white rounded-xl border border-slate-200 p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className="w-20 h-20 rounded-full bg-slate-200 shrink-0 flex items-center justify-center overflow-hidden">
-          <svg className="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-          </svg>
+        <div className="flex flex-col items-center gap-1 shrink-0">
+          {userId && (
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (!file || !userId) return;
+                setAvatarMessage(null);
+                const result = await setAvatarFromFile(userId, file);
+                if (result.ok) {
+                  setAvatarDataUrl(getAvatarDataUrl(userId));
+                  setAvatarMessage('Saved on this device.');
+                } else {
+                  setAvatarMessage(result.error);
+                }
+              }}
+            />
+          )}
+          <div className="relative w-20 h-20 rounded-full bg-slate-200 shrink-0 overflow-hidden ring-2 ring-slate-100 group">
+            {avatarDataUrl ? (
+              <img
+                src={avatarDataUrl}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <svg className="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              </div>
+            )}
+            {userId && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Change profile photo"
+                  className="absolute left-1/2 top-1/2 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white shadow-md transition-colors hover:bg-black/55 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1"
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  {/* Camera icon — click opens file picker */}
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </button>
+                {avatarDataUrl && (
+                  <button
+                    type="button"
+                    aria-label="Remove profile photo"
+                    className="absolute top-0.5 right-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white text-xs hover:bg-black/70"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearAvatar(userId);
+                      setAvatarDataUrl(null);
+                      setAvatarMessage('Removed.');
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+          {avatarMessage && (
+            <p className="text-[10px] text-slate-500 text-center max-w-[140px]">{avatarMessage}</p>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-semibold text-slate-900">
@@ -185,14 +290,14 @@ export function ProfilePage() {
           </div>
         </div>
         <div className="flex items-center gap-4 shrink-0">
-          {/* Edit profile 可后续接入真实编辑，这里暂留占位 */}
-          <button
+          {/* Edit profile placeholder· */}
+          {/* <button
             type="button"
             className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors"
             disabled
           >
             Edit Profile
-          </button>
+          </button> */}
           <button
             type="button"
             className="text-sm font-medium text-slate-700 hover:text-slate-900 transition-colors"
@@ -231,9 +336,16 @@ export function ProfilePage() {
             </div>
             <div>
               <dt className="text-slate-500 font-medium">Member since</dt>
-              <dd className="text-slate-900 mt-0.5">Not tracked yet</dd>
+              <dd className="text-slate-900 mt-0.5">
+                {memberSinceDisplay}
+                {memberSinceIso == null && userId && (
+                  <span className="block text-xs text-slate-400 mt-0.5">
+                    Shown after first sign-in on this device, or when the API returns account creation time.
+                  </span>
+                )}
+              </dd>
             </div>
-            <div>
+            {/* <div>
               <dt className="text-slate-500 font-medium">Plan</dt>
               <dd className="mt-0.5 flex items-center gap-2">
                 <span className="text-slate-900">Free</span>
@@ -245,7 +357,7 @@ export function ProfilePage() {
                   Upgrade →
                 </button>
               </dd>
-            </div>
+            </div> */}
           </dl>
         </section>
 
@@ -302,11 +414,14 @@ export function ProfilePage() {
               Learning style
             </p>
             <div className="inline-flex w-full rounded-2xl bg-slate-100 p-1 border border-slate-200">
-              {['Visual Learner', 'Balanced', 'Text-first'].map((option) => (
+              {LEARNING_STYLE_OPTIONS.map((option) => (
                 <button
                   key={option}
                   type="button"
-                  onClick={() => setLearningStyle(option)}
+                  onClick={() => {
+                    setLearningStyle(option);
+                    setLearningStylePreference(option);
+                  }}
                   className={`flex-1 px-4 py-2 text-sm font-medium rounded-2xl transition-all ${
                     learningStyle === option
                       ? 'bg-white shadow text-slate-900'
@@ -318,7 +433,7 @@ export function ProfilePage() {
               ))}
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Used by Ami to decide how content is presented.
+              Used by Ami to decide how content is presented. Saved on this device and applied when you create a new goal.
             </p>
           </div>
 

@@ -85,112 +85,124 @@ interface LocalSkill {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Sub-component: LevelTrack (beta UI, real data)                    */
+/*  Sub-components                                                     */
 /* ------------------------------------------------------------------ */
 
-function LevelTrack({
-  label,
-  level,
-  levels,
-  variant,
-  onLevelChange,
-  disabled,
+function formatLevelLabel(level: string) {
+  if (!level) return '';
+  return level.charAt(0).toUpperCase() + level.slice(1);
+}
+
+function SummaryChip({
+  children,
+  tone = 'default',
 }: {
-  label: string;
-  level: string;
-  levels: string[];
-  variant: 'target' | 'current';
-  onLevelChange?: (next: string) => void;
-  disabled?: boolean;
+  children: React.ReactNode;
+  tone?: 'default' | 'accent' | 'success';
 }) {
-  const idx = Math.max(0, levels.indexOf(level));
-  const pct = levels.length > 1 ? (idx / (levels.length - 1)) * 100 : 0;
-  const interactive = !!onLevelChange && !disabled;
-
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-slate-500 w-12 shrink-0">{label}</span>
-
-      <div className="relative flex-1 h-7 flex items-center">
-        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-slate-200" />
-        <div
-          className={cn(
-            'absolute top-1/2 -translate-y-1/2 left-0 h-1.5 rounded-full transition-all duration-150',
-            variant === 'target' ? 'bg-primary-500' : 'bg-primary-300',
-          )}
-          style={{ width: `${pct}%` }}
-        />
-        {levels.map((lv, i) => {
-          const x = levels.length > 1 ? (i / (levels.length - 1)) * 100 : 0;
-          const isActive = i <= idx;
-          const isSelected = i === idx;
-
-          return (
-            <button
-              key={i}
-              type="button"
-              disabled={!interactive}
-              onClick={() => onLevelChange?.(lv)}
-              title={interactive ? `Set to ${lv}` : lv}
-              className={cn(
-                'absolute top-1/2 -translate-y-1/2 -translate-x-1/2',
-                'flex items-center justify-center rounded-full transition-transform duration-100',
-                interactive
-                  ? 'hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 focus-visible:ring-offset-1 cursor-pointer'
-                  : 'cursor-default',
-                isSelected && interactive && 'scale-110',
-              )}
-              style={{ left: `${x}%` }}
-            >
-              {variant === 'target' ? (
-                <svg
-                  className={cn(
-                    'w-4 h-4 transition-colors',
-                    isActive ? 'text-primary-600' : 'text-slate-300',
-                    interactive && !isActive && 'hover:text-primary-400',
-                  )}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 21V3l9 4.5L21 3v18l-9-4.5L3 21z" />
-                </svg>
-              ) : (
-                <svg
-                  className={cn(
-                    'w-4 h-4 transition-colors',
-                    isActive ? 'text-primary-600' : 'text-slate-300',
-                    interactive && !isActive && 'hover:text-primary-400',
-                  )}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                </svg>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium',
+        tone === 'accent' && 'border-blue-200 bg-blue-50 text-blue-700',
+        tone === 'success' && 'border-emerald-200 bg-emerald-50 text-emerald-700',
+        tone === 'default' && 'border-slate-200 bg-slate-50 text-slate-600',
+      )}
+    >
+      {children}
+    </span>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Sub-component: LevelLabels                                       */
-/* ------------------------------------------------------------------ */
-
-function LevelLabels({ levels }: { levels: string[] }) {
+function LevelSelect({
+  label,
+  value,
+  levels,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  levels: string[];
+  onChange: (next: string) => void;
+  disabled?: boolean;
+}) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-12 shrink-0" />
-      <div className="relative flex-1 flex justify-between">
-        {levels.map((l) => (
-          <span key={l} className="text-[10px] text-slate-400">{l}</span>
+    <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
+      <span className="font-medium text-slate-500">{label}</span>
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        className="min-w-0 bg-transparent text-slate-700 outline-none disabled:cursor-not-allowed"
+      >
+        {levels.map((level) => (
+          <option key={level} value={level}>
+            {formatLevelLabel(level)}
+          </option>
         ))}
+      </select>
+    </label>
+  );
+}
+
+function LevelProgress({
+  levels,
+  currentLevel,
+  targetLevel,
+}: {
+  levels: string[];
+  currentLevel: string;
+  targetLevel: string;
+}) {
+  const currentIdx = Math.max(0, levels.indexOf(currentLevel));
+  const targetIdx = Math.max(0, levels.indexOf(targetLevel));
+  const start = Math.min(currentIdx, targetIdx);
+  const end = Math.max(currentIdx, targetIdx);
+  const left = levels.length > 1 ? `${(start / (levels.length - 1)) * 100}%` : '0%';
+  const width = levels.length > 1 ? `${((end - start) / (levels.length - 1)) * 100}%` : '0%';
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
+      <div className="relative mb-3 px-2">
+        <div className="absolute left-2 right-2 top-[22px] h-1 rounded-full bg-slate-200" />
+        {end > start && (
+          <div
+            className="absolute top-[22px] h-1 rounded-full bg-blue-200"
+            style={{ left: `calc(${left} + 8px)`, width }}
+          />
+        )}
+        <div className="relative grid grid-cols-5 gap-1">
+          {levels.map((level, idx) => {
+            const isCurrent = idx === currentIdx;
+            const isTarget = idx === targetIdx;
+            const isBetween = idx > start && idx < end;
+            return (
+              <div key={level} className="flex flex-col items-center gap-1 text-center">
+                <div className="h-5 text-[10px]">
+                  {isCurrent && isTarget ? (
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-700">Current + Target</span>
+                  ) : isCurrent ? (
+                    <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700">Current</span>
+                  ) : isTarget ? (
+                    <span className="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-700">Target</span>
+                  ) : null}
+                </div>
+                <div
+                  className={cn(
+                    'relative z-10 h-3.5 w-3.5 rounded-full border-2 bg-white',
+                    isCurrent && !isTarget && 'border-slate-500',
+                    isTarget && !isCurrent && 'border-blue-500',
+                    isCurrent && isTarget && 'border-blue-600 bg-blue-600',
+                    isBetween && 'border-blue-200 bg-blue-100',
+                    !isCurrent && !isTarget && !isBetween && 'border-slate-300',
+                  )}
+                />
+                <span className="text-[11px] leading-tight text-slate-500">{formatLevelLabel(level)}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -223,55 +235,46 @@ function SkillCard({
     (skill.original.skill_name ?? (skill.original as unknown as { name?: string }).name ?? '').toString() || 'Skill';
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-2">
-        <h3 className="font-semibold text-slate-800">{title}</h3>
-        <span
-          className={cn(
-            'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full',
-            gap >= 2
-              ? 'bg-slate-100 text-slate-700'
-              : 'bg-slate-100 text-slate-600',
-          )}
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
-          </svg>
-          Gap: {gap} Level
-        </span>
-      </div>
-
-      {/* Tracks */}
-      <div className="px-5 space-y-1.5">
-        <LevelTrack
-          label="Required"
-          level={skill.required_level}
-          levels={levels}
-          variant="target"
-          onLevelChange={onTargetChange}
-          disabled={disabled}
-        />
-        <LevelTrack
-          label="Current"
-          level={skill.current_level}
-          levels={levels}
-          variant="current"
-          onLevelChange={onCurrentChange}
-          disabled={disabled}
-        />
-        <LevelLabels levels={levels} />
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-end gap-4 px-5 py-3 mt-2 border-t border-slate-100">
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold text-slate-800">{title}</h3>
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+              Gap {gap}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500">
+            Current {formatLevelLabel(skill.current_level)} to target {formatLevelLabel(skill.required_level)}
+          </p>
+        </div>
         <Toggle
-          label={skill.addToPlan ? 'Add to Plan' : 'Ignore'}
+          label={skill.addToPlan ? 'Include' : 'Ignore'}
           checked={skill.addToPlan}
-          onChange={onToggle}
+          onChange={() => onToggle()}
+          disabled={disabled}
+          className="shrink-0"
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <LevelSelect
+          label="Current"
+          value={skill.current_level}
+          levels={levels}
+          onChange={onCurrentChange}
+          disabled={disabled}
+        />
+        <LevelSelect
+          label="Target"
+          value={skill.required_level}
+          levels={levels}
+          onChange={onTargetChange}
           disabled={disabled}
         />
       </div>
+
+      <LevelProgress levels={levels} currentLevel={skill.current_level} targetLevel={skill.required_level} />
     </div>
   );
 }
@@ -381,6 +384,8 @@ export function SkillGapPage() {
 
   const plannedSkills = localSkills.filter((s) => s.addToPlan);
   const hasGaps = plannedSkills.some((s) => levels.indexOf(s.required_level) > levels.indexOf(s.current_level));
+  const selectedCount = plannedSkills.length;
+  const identifiedCount = localSkills.length;
 
   const goalAssessment = (identifyResponse?.goal_assessment as Record<string, unknown> | undefined) ?? null;
   const autoRefined = goalAssessment?.auto_refined === true;
@@ -503,59 +508,23 @@ export function SkillGapPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <button
-          type="button"
-          onClick={() => navigate('/onboarding')}
-          className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1 mb-4"
-        >
-          ← Back to Onboarding
-        </button>
-        <h2 className="text-xl font-semibold text-slate-800">Skill Gap Analysis</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Learning goal: <strong className="text-slate-700">{refinedGoal}</strong>
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl space-y-6 pb-28">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <p className="text-sm text-slate-600">
+          Based on your goal, we've identified the key skills required and estimated your current level. Review each
+          skill below — toggle off any you want to exclude, or adjust if the AI assessment seems off.
         </p>
       </div>
 
-      {autoRefined && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
-          Your goal was automatically refined: <strong>{refinedGoal}</strong>
-        </div>
-      )}
-      {isVague && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
-          Your goal may be too broad. Consider being more specific for better personalisation.
-        </div>
-      )}
-      {allMastered && (
-        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800">
-          Great news — you appear to already have strong knowledge of this topic!
-        </div>
-      )}
-      {biasWarnings.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 text-sm text-orange-800">
-          <p className="font-medium mb-1">Bias audit notes:</p>
-          <ul className="list-disc list-inside space-y-0.5">
-            {biasWarnings.map((w, i) => (
-              <li key={i}>{w}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {ethicalDisclaimer && (
-        <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-xs text-slate-600">
-          {ethicalDisclaimer}
-        </div>
-      )}
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-slate-800">Select the skills you want included in your learning plan.</p>
+        <p className="text-sm text-slate-500">
+          {identifiedCount} identified • {selectedCount} selected
+        </p>
+      </div>
 
-      <p className="text-sm text-slate-600">
-        We identified <strong>{localSkills.length}</strong> skill
-        {localSkills.length !== 1 ? 's' : ''} relevant to your goal. Toggle skills below to include them in your learning
-        plan.
-      </p>
-
-      <div className="space-y-4">
+      <div className="space-y-3">
         {localSkills.map((skill, idx) => (
           <SkillCard
             key={`${skill.original.skill_name ?? skill.original.name ?? 'skill'}-${idx}`}
@@ -586,19 +555,33 @@ export function SkillGapPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      <div className="flex items-center justify-between gap-4 pt-4 pb-8">
-        <Button variant="secondary" onClick={() => navigate('/onboarding')} disabled={isScheduling}>
-          Edit Goal
-        </Button>
-        <Button
-          size="lg"
-          onClick={handleSchedule}
-          loading={isScheduling}
-          disabled={plannedSkills.length === 0 || !hasGaps || isScheduling}
-          className="px-8"
-        >
-          {isScheduling ? 'Creating your profile…' : 'Schedule Learning Path'}
-        </Button>
+      <div className="sticky bottom-0 z-10 pt-2">
+        <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-slate-800">{selectedCount} skill{selectedCount !== 1 ? 's' : ''} selected</p>
+            <p className="text-xs text-slate-500">
+              {hasGaps
+                ? 'Your selected skills will shape the difficulty and focus of the learning path.'
+                : 'Select at least one skill with a target level above the current level to continue.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button variant="secondary" onClick={() => navigate('/onboarding')} disabled={isScheduling}>
+              Edit Goal
+            </Button>
+            <Button
+              size="lg"
+              onClick={handleSchedule}
+              loading={isScheduling}
+              disabled={plannedSkills.length === 0 || !hasGaps || isScheduling}
+              className="px-8"
+            >
+              {isScheduling ? 'Creating your profile…' : 'Generate Learning Path'}
+            </Button>
+          </div>
+        </div>
+      </div>
       </div>
     </div>
   );

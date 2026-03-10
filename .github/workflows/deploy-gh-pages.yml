@@ -1,9 +1,12 @@
-
+# Deploy frontend-react to GitHub Pages.
+# VITE_API_BASE_URL 必须在 build 时存在，否则打包后仍指向 localhost。
+# 下面已默认 Azure 后端；若要改地址，改 env 或到 Repo → Settings → Variables 建 VITE_API_BASE_URL，并把下一行改成：
+#   VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
 
 name: Deploy to GitHub Pages
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -32,12 +35,14 @@ jobs:
         run: npm ci
         working-directory: frontend-react
 
-      # BASE_PATH 必须与 GitHub 仓库名一致，如 https://<user>.github.io/<repo>/
+      # BASE_PATH 与仓库名一致，如 https://<user>.github.io/<repo>/
+      # VITE_API_BASE_URL：生产后端，构建时写入 bundle
       - name: Build
         run: npm run build
         working-directory: frontend-react
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_API_BASE_URL: https://ami-backend.whiteflower-dafb3d91.eastus.azurecontainerapps.io
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

@@ -12,6 +12,7 @@ import { SkillGapPage } from '@/pages/SkillGapPage';
 import { RefineGoalExamplePage } from '@/pages/RefineGoalExamplePage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { useAuthContext } from '@/context/AuthContext';
+import { SidebarCollapseProvider } from '@/context/SidebarCollapseContext';
 
 // Vite 的 base（如 /Ami-React/）去掉末尾斜杠作为 React Router basename，适配 GitHub Pages
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
@@ -20,7 +21,11 @@ const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 function AuthGuard() {
   const { isAuthenticated } = useAuthContext();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <Outlet />;
+  return (
+    <SidebarCollapseProvider>
+      <Outlet />
+    </SidebarCollapseProvider>
+  );
 }
 
 /** Root redirect: routes users to onboarding (goals routing comes later) */

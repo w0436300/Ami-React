@@ -6,6 +6,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useGoalsContext } from '@/context/GoalsContext';
 import { useDeleteGoal, usePatchGoal } from '@/api/endpoints/goals';
 import type { LearningPathSession } from '@/types';
+import { withLearningStyleInLearnerInformation } from '@/lib/learningStylePreference';
 
 function getProgress(path: LearningPathSession[] | undefined): number {
   if (!path || path.length === 0) return 0;
@@ -75,11 +76,16 @@ export function GoalsPage() {
     if (!title) return;
     setIsAddGoalModalOpen(false);
     setNewGoalText('');
+    const baseInfo =
+      (activeGoals[0]?.learner_profile?.learner_information as string | undefined) ?? '';
     navigate('/skill-gap', {
       state: {
         goal: title,
         personaKey: null,
-        learnerInformation: activeGoals[0]?.learner_profile?.learner_information ?? '',
+        learnerInformation:
+          baseInfo.trim() !== ''
+            ? withLearningStyleInLearnerInformation(baseInfo)
+            : withLearningStyleInLearnerInformation(`Learning goal: ${title}.`),
         isGoalManagementFlow: true,
       },
     });
@@ -100,7 +106,7 @@ export function GoalsPage() {
   const nextSession = currentGoal?.learning_path?.find((s) => !s.if_learned);
 
   return (
-    <div className="max-w-4xl space-y-8">
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
       {/* Header — current goal */}
       {currentGoal && (
         <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">

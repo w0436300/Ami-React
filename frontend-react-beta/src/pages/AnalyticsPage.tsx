@@ -25,7 +25,12 @@ function ClockIcon() {
 /*  Overview view (Goals overview)                                    */
 /* ------------------------------------------------------------------ */
 
-function AnalyticsOverview() {
+function AnalyticsOverview({
+  onOpenGoalAnalysis,
+}: {
+  /** Select goal and switch to Active Goal analytics view (not Learning Path) */
+  onOpenGoalAnalysis: (goalId: number) => void;
+}) {
   const [timeRange, setTimeRange] = useState<TimeRange>('Last 30 days');
 
   const { userId } = useAuthContext();
@@ -104,90 +109,74 @@ function AnalyticsOverview() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* Sessions Completed */}
         <div className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Sessions completed
-              </p>
-              <p className="mt-2 text-2xl font-semibold">
-                {isLoading ? (
-                  <span className="inline-flex h-6 w-16 rounded bg-slate-200 animate-pulse" />
-                ) : (
-                  `${sessionsCompleted} / ${totalSessions}`
-                )}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-400">
-                Across all active learning goals.
-              </p>
-            </div>
-            <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-              <span className="text-lg text-slate-600">📊</span>
-            </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              Sessions completed
+            </p>
+            <p className="mt-2 text-2xl font-semibold">
+              {isLoading ? (
+                <span className="inline-flex h-6 w-16 rounded bg-slate-200 animate-pulse" />
+              ) : (
+                `${sessionsCompleted} / ${totalSessions}`
+              )}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Across all active learning goals.
+            </p>
           </div>
         </div>
 
         {/* Active Goals */}
         <div className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Active goals
-              </p>
-              <p className="mt-2 text-2xl font-semibold">
-                {isLoading ? (
-                  <span className="inline-flex h-6 w-14 rounded bg-slate-200 animate-pulse" />
-                ) : (
-                  activeGoals.length
-                )}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-400">
-                Goals that are not archived or deleted.
-              </p>
-            </div>
-            <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-              <span className="text-lg text-slate-600">🎯</span>
-            </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              Active goals
+            </p>
+            <p className="mt-2 text-2xl font-semibold">
+              {isLoading ? (
+                <span className="inline-flex h-6 w-14 rounded bg-slate-200 animate-pulse" />
+              ) : (
+                activeGoals.length
+              )}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              Goals that are not archived or deleted.
+            </p>
           </div>
         </div>
 
         {/* Total Study Time */}
         <div className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Total study time
-              </p>
-              <p className="mt-2 text-2xl font-semibold">
-                {isLoading ? (
-                  <span className="inline-flex h-6 w-14 rounded bg-slate-200 animate-pulse" />
-                ) : totalStudyTimeSec > 0 ? (
-                  totalStudyTimeSec >= 3600
-                    ? `${(totalStudyTimeSec / 3600).toFixed(1)}h`
-                    : `${Math.round(totalStudyTimeSec / 60)}m`
-                ) : (
-                  '0m'
-                )}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-400">
-                {avgSessionDurationSec > 0
-                  ? `Avg ${Math.round(avgSessionDurationSec / 60)}m per session`
-                  : 'Time spent across all sessions.'}
-              </p>
-            </div>
-            <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-              <span className="text-lg text-slate-600">⏱️</span>
-            </div>
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              Total study time
+            </p>
+            <p className="mt-2 text-2xl font-semibold">
+              {isLoading ? (
+                <span className="inline-flex h-6 w-14 rounded bg-slate-200 animate-pulse" />
+              ) : totalStudyTimeSec > 0 ? (
+                totalStudyTimeSec >= 3600
+                  ? `${(totalStudyTimeSec / 3600).toFixed(1)}h`
+                  : `${Math.round(totalStudyTimeSec / 60)}m`
+              ) : (
+                '0m'
+              )}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {avgSessionDurationSec > 0
+                ? `Avg ${Math.round(avgSessionDurationSec / 60)}m per session`
+                : 'Time spent across all sessions.'}
+            </p>
           </div>
         </div>
 
         {/* Best Performing */}
         <div className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Best performing
-              </p>
-              <p className="mt-2 text-lg font-semibold truncate max-w-[11rem]">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              Best performing
+            </p>
+            <p className="mt-2 text-lg font-semibold truncate max-w-[11rem]">
                 {isLoading ? (
                   <span className="inline-flex h-6 w-24 rounded bg-slate-200 animate-pulse" />
                 ) : bestGoal ? (
@@ -197,24 +186,20 @@ function AnalyticsOverview() {
                 ) : (
                   'No data yet'
                 )}
-              </p>
-              <p className="mt-1 text-[11px] text-slate-400">
-                {bestGoal
-                  ? `${Math.round(bestGoal.progress * 100)}% complete`
-                  : 'Complete a few sessions to see this.'}
-              </p>
-            </div>
-            <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-              <span className="text-lg text-slate-600">🏆</span>
-            </div>
+            </p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {bestGoal
+                ? `${Math.round(bestGoal.progress * 100)}% complete`
+                : 'Complete a few sessions to see this.'}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Goals overview + charts */}
-      <div className="mt-6 grid grid-cols-1 xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1.5fr)] gap-6">
+      {/* Goals overview + charts — items-start so left column height fits content */}
+      <div className="mt-6 grid grid-cols-1 xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1.5fr)] gap-6 items-start">
         {/* Goals overview list */}
-        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm self-start w-full">
           <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100">
             <div>
               <h3 className="text-sm font-semibold text-slate-900">Goals overview</h3>
@@ -223,7 +208,7 @@ function AnalyticsOverview() {
               </p>
             </div>
             <p className="hidden md:block text-[11px] text-slate-400">
-              Click any goal in other pages to dive deeper.
+              Use the arrow to open that goal&apos;s analytics (Active Goal view).
             </p>
           </div>
           <div className="divide-y divide-slate-100">
@@ -301,10 +286,11 @@ function AnalyticsOverview() {
                       </div>
                     </div>
 
-                    <Link
-                      to="/analytics"
-                      className="shrink-0 self-start text-slate-400 hover:text-slate-700"
-                      aria-label="View goal details"
+                    <button
+                      type="button"
+                      className="shrink-0 self-start rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                      aria-label="Open goal analytics"
+                      onClick={() => onOpenGoalAnalysis(goal.id)}
                     >
                       <svg
                         className="w-5 h-5"
@@ -319,7 +305,7 @@ function AnalyticsOverview() {
                           d="M8.25 4.5l7.5 7.5-7.5 7.5"
                         />
                       </svg>
-                    </Link>
+                    </button>
                   </div>
                 );
               })}
@@ -784,10 +770,11 @@ function AnalyticsActiveGoal() {
 
 export function AnalyticsPage() {
   const [view, setView] = useState<'overview' | 'active-goal'>('overview');
+  const { setSelectedGoalId } = useGoalsContext();
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4">
-      <div className="flex justify-end">
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 space-y-4">
+      <div className="flex justify-start items-center">
         <div className="inline-flex rounded-full bg-slate-100 p-1 text-sm font-medium">
           <button
             type="button"
@@ -812,7 +799,16 @@ export function AnalyticsPage() {
         </div>
       </div>
 
-      {view === 'overview' ? <AnalyticsOverview /> : <AnalyticsActiveGoal />}
+      {view === 'overview' ? (
+        <AnalyticsOverview
+          onOpenGoalAnalysis={(goalId) => {
+            setSelectedGoalId(goalId);
+            setView('active-goal');
+          }}
+        />
+      ) : (
+        <AnalyticsActiveGoal />
+      )}
     </div>
   );
 }

@@ -12,28 +12,6 @@ import { useGoalRuntimeState, patchGoalApi } from '@/api/endpoints/goals';
 import { scheduleLearningPathAgenticApi, adaptLearningPathApi } from '@/api/endpoints/learningPath';
 import { sessionActivityApi } from '@/api/endpoints/content';
 
-function formatFeedbackSummary(summary: unknown): string {
-  if (summary == null) return '';
-  if (typeof summary === 'string') return summary;
-  if (typeof summary === 'number' || typeof summary === 'boolean') return String(summary);
-  if (typeof summary === 'object') {
-    const obj = summary as Record<string, unknown>;
-    const keys = ['progression', 'engagement', 'personalization'];
-    if (keys.some((k) => k in obj)) {
-      return keys
-        .filter((k) => obj[k] != null && String(obj[k]).trim() !== '')
-        .map((k) => `${k}: ${String(obj[k])}`)
-        .join(' • ');
-    }
-    try {
-      return JSON.stringify(summary);
-    } catch {
-      return String(summary);
-    }
-  }
-  return String(summary);
-}
-
 const LEARNING_PATH_LOADING = {
   title: 'Building your learning path',
   steps: [
@@ -64,6 +42,7 @@ export function LearningPathPage() {
 
   const [isScheduling, setIsScheduling] = useState(false);
   const [isAdapting, setIsAdapting] = useState(false);
+  const [isDesignBiasExpanded, setIsDesignBiasExpanded] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const { data: runtimeState, refetch: refetchRuntime } = useGoalRuntimeState(
@@ -158,7 +137,6 @@ export function LearningPathPage() {
   };
 
   const learningPath = activeGoal?.learning_path ?? [];
-  const evaluation = activeGoal?.plan_agent_metadata?.evaluation;
   const fslsmInput = activeGoal?.learner_profile?.learning_preferences?.fslsm_dimensions?.fslsm_input;
   const threshold = config?.fslsm_activation_threshold ?? 0.3;
   const showModuleMap = typeof fslsmInput === 'number' && fslsmInput <= -threshold;
@@ -199,7 +177,7 @@ export function LearningPathPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 space-y-6">
       {/* Header: Current goal + Goal dropdown */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <p className="text-base font-medium text-slate-800">
@@ -264,24 +242,27 @@ export function LearningPathPage() {
         </div>
       )}
 
-      {evaluation && (
-        <div
-          className={cn(
-            'rounded-lg border px-4 py-3 text-sm',
-            (evaluation as any).pass
-              ? 'bg-green-50 border-green-200 text-green-800'
-              : 'bg-amber-50 border-amber-200 text-amber-800',
-          )}
-        >
-          <p className="font-medium mb-1">
-            Plan Quality: {(evaluation as any).pass ? 'Approved' : 'Needs Review'}
-          </p>
-          {(evaluation as any).feedback_summary != null &&
-            formatFeedbackSummary((evaluation as any).feedback_summary) && (
-              <p className="text-xs">{formatFeedbackSummary((evaluation as any).feedback_summary)}</p>
-            )}
+      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Design Bias</p>
+            <p className="mt-1 text-xs text-slate-500">Reserved for future review notes and bias checks.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsDesignBiasExpanded((prev) => !prev)}
+            className="inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            {isDesignBiasExpanded ? 'Hide details' : 'Show details'}
+          </button>
         </div>
-      )}
+
+        {isDesignBiasExpanded && (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+            This field is intentionally left as a lightweight placeholder for future design bias review content.
+          </div>
+        )}
+      </div>
 
       {/* Two columns: Session list | Overall Progress-ish card */}
       <div className="flex flex-col lg:flex-row gap-6">

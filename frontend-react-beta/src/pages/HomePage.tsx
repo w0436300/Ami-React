@@ -47,15 +47,18 @@ export function HomePage() {
   const totalStudyTime = behavMetrics ? formatDuration(behavMetrics.total_learning_time_sec) : '—';
 
   return (
-    <div className="space-y-8">
-      {/* Welcome banner */}
-      <div className="bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl p-8 text-white">
-        <h2 className="text-2xl font-bold">Welcome back!</h2>
-        <p className="mt-2 text-primary-100 max-w-lg">
+    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
+      {/* Welcome banner — colors: bg #D9EEF1, title #12333A, body #355C63, button #FFF / #0F5968 */}
+      <div className="rounded-xl p-8 bg-[#D9EEF1]">
+        <h2 className="text-2xl font-bold text-[#12333A]">Welcome back!</h2>
+        <p className="mt-2 max-w-lg text-[#355C63]">
           Pick up where you left off, or start something new. Ami adapts your learning path based on your progress.
         </p>
         <Link to="/goals">
-          <Button variant="secondary" className="mt-5 !text-primary-800 !bg-white/90 hover:!bg-white">
+          <Button
+            variant="secondary"
+            className="mt-5 !bg-[#FFFFFF] !text-[#0F5968] border-0 shadow-sm hover:!bg-[#F0F7F8] hover:!text-[#0F5968]"
+          >
             Continue Learning
           </Button>
         </Link>
