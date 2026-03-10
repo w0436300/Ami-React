@@ -483,3 +483,169 @@ export interface GetEventsResponse {
   user_id: string;
   events: unknown[];
 }
+
+// ─── Goals ───────────────────────────────────────────────────────────────────
+
+export interface GoalAggregate {
+  id: number;
+  learning_goal: string;
+  skill_gaps?: Record<string, unknown>;
+  goal_assessment?: unknown;
+  goal_context?: unknown;
+  retrieved_sources?: unknown[];
+  bias_audit?: unknown;
+  profile_fairness?: unknown;
+  learning_path?: LearningPathSession[];
+  plan_agent_metadata?: AgentMetadata;
+  learner_profile?: LearnerProfile;
+  is_completed?: boolean;
+  is_deleted?: boolean;
+  [key: string]: unknown;
+}
+
+export interface GoalsListResponse {
+  goals: GoalAggregate[];
+}
+
+export interface GoalCreateRequest {
+  learning_goal: string;
+  skill_gaps?: unknown;
+  goal_assessment?: unknown;
+  goal_context?: unknown;
+  retrieved_sources?: unknown[];
+  bias_audit?: unknown;
+  profile_fairness?: unknown;
+  learner_profile?: LearnerProfile;
+  learning_path?: LearningPathSession[];
+  plan_agent_metadata?: AgentMetadata;
+}
+
+export interface GoalUpdateRequest {
+  learning_goal?: string;
+  learning_path?: LearningPathSession[];
+  plan_agent_metadata?: AgentMetadata;
+  [key: string]: unknown;
+}
+
+// ─── Goal Runtime State ──────────────────────────────────────────────────────
+
+export interface GoalRuntimeStateSession {
+  session_index: number;
+  session_id: string;
+  is_locked: boolean;
+  can_open: boolean;
+  can_complete: boolean;
+  completion_block_reason: string | null;
+  if_learned: boolean;
+  is_mastered: boolean;
+  mastery_score: number | null;
+  mastery_threshold: number;
+  navigation_mode: string;
+}
+
+export interface GoalRuntimeState {
+  goal_id: number;
+  adaptation: {
+    suggested: boolean;
+    message: string;
+    sources: unknown[];
+  };
+  sessions: GoalRuntimeStateSession[];
+}
+
+// ─── Learning Content ────────────────────────────────────────────────────────
+
+export interface ContentSection {
+  title: string;
+  anchor?: string;
+  level?: number;
+  markdown: string;
+}
+
+export interface ContentViewModel {
+  sections?: ContentSection[];
+  references?: Array<{ index: number; label: string }>;
+}
+
+export interface LearningContentResponse {
+  document?: string | Record<string, unknown>;
+  quizzes?: DocumentQuiz;
+  content_format: 'standard' | 'audio_enhanced' | 'visual_enhanced';
+  audio_url?: string | null;
+  audio_mode?: string;
+  view_model?: ContentViewModel;
+  sources_used?: unknown[];
+}
+
+// ─── Content Generation ──────────────────────────────────────────────────────
+
+export interface GenerateLearningContentRequest extends BaseRequest {
+  learner_profile: string;
+  learning_path: string;
+  learning_session: string;
+  use_search?: boolean;
+  allow_parallel?: boolean;
+  with_quiz?: boolean;
+  goal_context?: Record<string, unknown>;
+  user_id?: string;
+  goal_id?: number;
+  session_index?: number;
+}
+
+// ─── Session Activity ────────────────────────────────────────────────────────
+
+export interface SessionActivityRequest {
+  user_id: string;
+  goal_id: number;
+  session_index: number;
+  event_type: 'start' | 'heartbeat' | 'end';
+}
+
+export interface SessionActivityResponse {
+  trigger?: { show: boolean; message: string };
+}
+
+export interface CompleteSessionRequest {
+  user_id: string;
+  goal_id: number;
+  session_index: number;
+}
+
+export interface CompleteSessionResponse {
+  goal?: GoalAggregate;
+}
+
+export interface SubmitContentFeedbackRequest {
+  user_id: string;
+  goal_id: number;
+  feedback: Record<string, unknown>;
+}
+
+export interface SubmitContentFeedbackResponse {
+  goal?: GoalAggregate;
+}
+
+// ─── Dashboard Metrics ───────────────────────────────────────────────────────
+
+export interface DashboardMetricsResponse {
+  user_id: string;
+  goal_id: number | null;
+  overall_progress: number;
+  skill_radar: {
+    labels: string[];
+    current_levels: number[];
+    required_levels: number[];
+  };
+  session_time_series: Array<{ session_index: number; duration_sec: number }>;
+  mastery_time_series: Array<{ session_index: number; mastery_pct: number }>;
+}
+
+// ─── Profile Updates ─────────────────────────────────────────────────────────
+
+export interface LearnerInformationUpdateRequest extends BaseRequest {
+  learner_profile: string;
+  updated_learner_information: string;
+  resume_text?: string;
+  user_id?: string;
+  goal_id?: number;
+}

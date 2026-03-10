@@ -25,6 +25,14 @@ interface LocationState {
   sessionIndex: number;
 }
 
+function transformSectionMarkdown(markdown: string): string {
+  if (!markdown) return markdown;
+  // Mirror Streamlit behavior: make backend /static assets absolute so media (video/image) loads correctly
+  const staticBase = absolutizeUrl('/static/');
+  if (!staticBase) return markdown;
+  return markdown.replace(/\/static\//g, staticBase);
+}
+
 function normalizeGoalContext(value: unknown): Record<string, unknown> | undefined {
   if (!value) return undefined;
   if (typeof value === 'string') {
@@ -436,7 +444,7 @@ export function LearningSessionPage() {
               </span>
             </div>
             <div className="prose prose-sm prose-slate max-w-none">
-              <ReactMarkdown>{currentSection.markdown}</ReactMarkdown>
+              <ReactMarkdown>{transformSectionMarkdown(currentSection.markdown)}</ReactMarkdown>
             </div>
           </div>
         )}
