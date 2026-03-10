@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/cn';
 import { useHasEnteredGoal } from '@/context/HasEnteredGoalContext';
+import { useAuthContext } from '@/context/AuthContext';
 
 interface NavSubItem {
   to: string;
@@ -82,6 +83,7 @@ interface SideNavProps {
 
 export function SideNav({ collapsed = false }: SideNavProps) {
   const { hasEnteredGoal } = useHasEnteredGoal();
+  const { userId } = useAuthContext();
   const navItems = NAV_ITEMS.filter((item) => !item.showWhenHasGoal || hasEnteredGoal);
 
   return (
@@ -133,10 +135,10 @@ export function SideNav({ collapsed = false }: SideNavProps) {
         </ul>
       </nav>
 
-      {/* Bottom: Example page link */}
+      {/* Bottom: User avatar + profile */}
       <div className="px-2 pb-3 mt-auto border-t border-slate-200 pt-3">
         <NavLink
-          to="/example/refine-goal"
+          to="/profile"
           className={({ isActive }) =>
             cn(
               'flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
@@ -146,12 +148,17 @@ export function SideNav({ collapsed = false }: SideNavProps) {
               collapsed && 'justify-center px-0',
             )
           }
-          title="API Example"
+          title={collapsed ? (userId ?? 'User') : undefined}
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-          </svg>
-          {!collapsed && 'API Example'}
+          <div className="w-8 h-8 rounded-full bg-primary-200 text-primary-800 flex items-center justify-center font-semibold text-xs shrink-0">
+            {userId ? userId.charAt(0).toUpperCase() : 'U'}
+          </div>
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-800 truncate">{userId ?? 'User'}</p>
+              <p className="text-[11px] text-slate-400 truncate">View profile</p>
+            </div>
+          )}
         </NavLink>
       </div>
     </aside>

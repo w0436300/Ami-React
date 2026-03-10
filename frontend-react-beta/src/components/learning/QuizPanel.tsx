@@ -10,9 +10,10 @@ interface QuizPanelProps {
   goalId: number;
   sessionIndex: number;
   onMasteryResult: (result: MasteryEvaluationResponse) => void;
+  ensureCached?: () => Promise<void>;
 }
 
-export function QuizPanel({ quiz, userId, goalId, sessionIndex, onMasteryResult }: QuizPanelProps) {
+export function QuizPanel({ quiz, userId, goalId, sessionIndex, onMasteryResult, ensureCached }: QuizPanelProps) {
   const scQs = quiz.single_choice_questions ?? [];
   const mcQs = quiz.multiple_choice_questions ?? [];
   const tfQs = quiz.true_false_questions ?? [];
@@ -28,32 +29,45 @@ export function QuizPanel({ quiz, userId, goalId, sessionIndex, onMasteryResult 
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<MasteryEvaluationResponse | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showExplanations, setShowExplanations] = useState(false);
 
   const handleSubmit = useCallback(async () => {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
+      if (ensureCached) await ensureCached();
+
       const payload = {
         user_id: userId,
         goal_id: goalId,
         session_index: sessionIndex,
         quiz_answers: {
-          single_choice_questions: scAnswers.map((a) => a ?? 0),
-          multiple_choice_questions: mcAnswers.map((s) => Array.from(s)),
-          true_false_questions: tfAnswers.map((a) => a ?? false),
-          short_answer_questions: saAnswers,
-          open_ended_questions: oeAnswers,
+          single_choice_questions: scAnswers.map((a, i) =>
+            a != null ? scQs[i].options[a] : null,
+          ),
+          multiple_choice_questions: mcAnswers.map((s, i) =>
+            Array.from(s).map((idx) => mcQs[i].options[idx]),
+          ),
+          true_false_questions: tfAnswers.map((a) =>
+            a == null ? null : a ? 'True' : 'False',
+          ),
+          short_answer_questions: saAnswers.map((a) => a || null),
+          open_ended_questions: oeAnswers.map((a) => a || null),
         },
       };
       const { data } = await apiClient.post<MasteryEvaluationResponse>('evaluate-mastery', payload);
       setResult(data);
       onMasteryResult(data);
-    } catch {
-      // ignore
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail
+        ?? 'Failed to submit quiz. Please try again.';
+      setSubmitError(msg);
     } finally {
       setIsSubmitting(false);
     }
-  }, [userId, goalId, sessionIndex, scAnswers, mcAnswers, tfAnswers, saAnswers, oeAnswers, onMasteryResult]);
+  }, [userId, goalId, sessionIndex, ensureCached, scQs, mcQs, scAnswers, mcAnswers, tfAnswers, saAnswers, oeAnswers, onMasteryResult]);
 
   const handleRetake = useCallback(() => {
     setScAnswers(scQs.map(() => null));
@@ -62,6 +76,7 @@ export function QuizPanel({ quiz, userId, goalId, sessionIndex, onMasteryResult 
     setSaAnswers(saQs.map(() => ''));
     setOeAnswers(oeQs.map(() => ''));
     setResult(null);
+    setSubmitError(null);
     setShowExplanations(false);
   }, [scQs, mcQs, tfQs, saQs, oeQs]);
 
@@ -93,8 +108,11 @@ export function QuizPanel({ quiz, userId, goalId, sessionIndex, onMasteryResult 
           <div className="space-y-2">
             {q.options.map((opt, oi) => {
               const isSelected = scAnswers[qi] === oi;
-              const isCorrect = result != null && q.correct_option === oi;
-              const isWrong = result != null && isSelected && q.correct_option !== oi;
+              const correctIdx = typeof q.correct_option === 'number'
+                ? q.correct_option
+                : q.options.indexOf(q.correct_option as string);
+              const isCorrect = result != null && correctIdx === oi;
+              const isWrong = result != null && isSelected && correctIdx !== oi;
               return (
                 <button
                   key={oi}
@@ -135,9 +153,14 @@ export function QuizPanel({ quiz, userId, goalId, sessionIndex, onMasteryResult 
           <div className="space-y-2">
             {q.options.map((opt, oi) => {
               const isSelected = mcAnswers[qi].has(oi);
-              const correctOpts = q.correct_options ?? [];
-              const isCorrect = result != null && correctOpts.includes(oi);
-              const isWrong = result != null && isSelected && !correctOpts.includes(oi);
+              const rawCorrect = q.correct_options ?? [];
+              const correctIndices = new Set(
+                rawCorrect.map((c: string | number) =>
+                  typeof c === 'number' ? c : q.options.indexOf(c),
+                ),
+              );
+              const isCorrect = result != null && correctIndices.has(oi);
+              const isWrong = result != null && isSelected && !correctIndices.has(oi);
               return (
                 <button
                   key={oi}
@@ -320,7 +343,16 @@ export function QuizPanel({ quiz, userId, goalId, sessionIndex, onMasteryResult 
         </div>
       )}
 
-      {!result && (
+      {submitError && (
+        <div className="rounded-xl border border-red-300 bg-red-50 px-5 py-4 space-y-2">
+          <p className="text-sm font-medium text-red-700">{submitError}</p>
+          <Button size="sm" variant="secondary" onClick={handleSubmit} loading={isSubmitting}>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {!result && !submitError && (
         <Button className="w-full" onClick={handleSubmit} loading={isSubmitting} disabled={isSubmitting}>
           Submit Answers
         </Button>

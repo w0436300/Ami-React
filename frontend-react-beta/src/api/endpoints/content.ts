@@ -100,10 +100,40 @@ export async function getDashboardMetricsApi(
   userId: string,
   goalId?: number,
 ): Promise<DashboardMetricsResponse> {
-  const { data } = await apiClient.get<DashboardMetricsResponse>(`dashboard-metrics/${userId}`, {
+  const { data } = await apiClient.get(`dashboard-metrics/${userId}`, {
     params: goalId != null ? { goal_id: goalId } : {},
   });
-  return data;
+
+  const raw = data as Record<string, unknown>;
+
+  const rawSessionSeries = (raw.session_time_series ?? []) as Array<Record<string, unknown>>;
+  const sessionTimeSeries = rawSessionSeries.map((s, idx) => ({
+    session_index: (s.session_index as number) ?? idx,
+    duration_sec: s.duration_sec != null
+      ? (s.duration_sec as number)
+      : (s.time_spent_min as number ?? 0) * 60,
+  }));
+
+  const rawMasterySeries = (raw.mastery_time_series ?? []) as Array<Record<string, unknown>>;
+  const masteryTimeSeries = rawMasterySeries.map((m, idx) => ({
+    session_index: (m.session_index as number) ?? (m.sample_index as number) ?? idx,
+    mastery_pct: m.mastery_pct != null
+      ? (m.mastery_pct as number)
+      : (m.mastery_rate as number ?? 0) * 100,
+  }));
+
+  return {
+    user_id: raw.user_id as string ?? userId,
+    goal_id: (raw.goal_id as number) ?? null,
+    overall_progress: (raw.overall_progress as number) ?? 0,
+    skill_radar: (raw.skill_radar as DashboardMetricsResponse['skill_radar']) ?? {
+      labels: [],
+      current_levels: [],
+      required_levels: [],
+    },
+    session_time_series: sessionTimeSeries,
+    mastery_time_series: masteryTimeSeries,
+  };
 }
 
 export async function updateLearningPreferencesApi(

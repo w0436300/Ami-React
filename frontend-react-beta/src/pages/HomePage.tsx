@@ -4,6 +4,7 @@ import { useAuthContext } from '@/context/AuthContext';
 import { useGoalsContext } from '@/context/GoalsContext';
 import { useActiveGoal } from '@/context/GoalsContext';
 import { useDashboardMetrics } from '@/api/endpoints/content';
+import { useBehavioralMetrics } from '@/api/endpoints/metrics';
 
 function formatDuration(secs: number | undefined): string {
   if (!secs || !Number.isFinite(secs)) return '—';
@@ -23,17 +24,27 @@ export function HomePage() {
   const { userId } = useAuthContext();
   const { goals } = useGoalsContext();
   const { activeGoal } = useActiveGoal();
-  const { data: metrics, isLoading } = useDashboardMetrics(userId ?? undefined, activeGoal?.id);
+  const { data: metrics, isLoading: dashLoading } = useDashboardMetrics(userId ?? undefined, activeGoal?.id);
+  const { data: behavMetrics, isLoading: behavLoading } = useBehavioralMetrics(userId ?? undefined, activeGoal?.id);
+  const isLoading = dashLoading || behavLoading;
 
   const overallProgressPct =
     metrics && typeof metrics.overall_progress === 'number'
       ? `${Math.round(metrics.overall_progress * 100)}%`
       : '—';
-  const sessionsCompleted =
-    metrics && typeof metrics.sessions_completed === 'number'
-      ? `${metrics.sessions_completed} / ${metrics.total_sessions_in_path}`
-      : '—';
-  const totalStudyTime = metrics ? formatDuration(metrics.total_learning_time_sec) : '—';
+
+  const sessionsCompleted = (() => {
+    if (behavMetrics && typeof behavMetrics.sessions_completed === 'number') {
+      return `${behavMetrics.sessions_completed} / ${behavMetrics.total_sessions_in_path}`;
+    }
+    if (activeGoal?.learning_path) {
+      const done = activeGoal.learning_path.filter((s) => s.if_learned).length;
+      return `${done} / ${activeGoal.learning_path.length}`;
+    }
+    return '—';
+  })();
+
+  const totalStudyTime = behavMetrics ? formatDuration(behavMetrics.total_learning_time_sec) : '—';
 
   return (
     <div className="space-y-8">

@@ -1,38 +1,17 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Button, Select } from '@/components/ui';
+import { Link } from 'react-router-dom';
+import { Select } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { useAuthContext } from '@/context/AuthContext';
 import { useGoalsContext } from '@/context/GoalsContext';
 import { useActiveGoal } from '@/context/GoalsContext';
 import { useDashboardMetrics } from '@/api/endpoints/content';
-
-/* ------------------------------------------------------------------ */
-/*  Mock data                                                         */
-/* ------------------------------------------------------------------ */
+import { useBehavioralMetrics } from '@/api/endpoints/metrics';
+import { SkillRadarChart, SessionTimeChart, MasteryChart } from '@/components/analytics';
 
 const TIME_OPTIONS = ['Last 7 days', 'Last 30 days', 'All time'] as const;
 type TimeRange = (typeof TIME_OPTIONS)[number];
 
-const GOAL_OPTIONS = [
-  { value: 'g1', label: 'Learn French for Travel' },
-  { value: 'g2', label: 'Goal Name 2' },
-  { value: 'g3', label: 'Goal Name 3' },
-];
-
-const OVERVIEW_GOALS = [
-  { id: '1', name: '[Goal name]', status: 'In progress' as const, progress: 50, topGap: '[Skills]', nextUp: '[module name]' },
-  { id: '2', name: '[Goal name]', status: 'At Risk' as const, progress: 50, topGap: '[Skills]', nextUp: '[module name]' },
-  { id: '3', name: '[Goal name]', status: 'In progress' as const, progress: 50, topGap: '[Skills]', nextUp: '[module name]' },
-];
-
-const SKILL_MASTERY_FILTERS = ['All', 'Gaps only', 'Mastered'] as const;
-const SKILLS = [
-  { id: '1', name: '[Skills name]', status: 'In progress' as const, current: 50, required: 80 },
-  { id: '2', name: '[Skills name]', status: 'Not Started' as const, current: 10, required: 80 },
-  { id: '3', name: '[Skills name]', status: 'Not Started' as const, current: 10, required: 80 },
-  { id: '4', name: '[Skills name]', status: 'Completed' as const, current: 80, required: 80 },
-];
 
 function ClockIcon() {
   return (
@@ -50,17 +29,28 @@ function AnalyticsOverview() {
   const [timeRange, setTimeRange] = useState<TimeRange>('Last 30 days');
 
   const { userId } = useAuthContext();
-  const { goals } = useGoalsContext();
-  const { activeGoal } = useActiveGoal();
+  const { goals, selectedGoalId } = useGoalsContext();
 
-  const { data: metrics, isLoading } = useDashboardMetrics(
+  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics(
     userId ?? undefined,
-    undefined,
+    selectedGoalId ?? undefined,
   );
 
+  const { data: behavioralMetrics, isLoading: behavioralLoading } = useBehavioralMetrics(
+    userId ?? undefined,
+  );
+
+  const isLoading = metricsLoading || behavioralLoading;
+
   const activeGoals = goals.filter((g) => !g.is_deleted);
-  const totalSessions = metrics?.total_sessions_in_path ?? 0;
-  const sessionsCompleted = metrics?.sessions_completed ?? 0;
+
+  const totalSessions = behavioralMetrics?.total_sessions_in_path
+    ?? activeGoals.reduce((sum, g) => sum + (g.learning_path?.length ?? 0), 0);
+  const sessionsCompleted = behavioralMetrics?.sessions_completed
+    ?? activeGoals.reduce((sum, g) => sum + (g.learning_path?.filter((s) => s.if_learned).length ?? 0), 0);
+  const totalStudyTimeSec = behavioralMetrics?.total_learning_time_sec ?? 0;
+  const avgSessionDurationSec = behavioralMetrics?.avg_session_duration_sec ?? 0;
+
   const sessionTimeSeries = metrics?.session_time_series ?? [];
   const masterySeries = metrics?.mastery_time_series ?? [];
 
@@ -77,7 +67,6 @@ function AnalyticsOverview() {
     return { goal, total, completed, progress, nextUp };
   });
 
-  const atRiskGoals = goalProgress.filter((g) => g.total > 0 && g.progress < 0.3);
   const bestGoal =
     goalProgress.reduce(
       (best, g) => (g.progress > (best?.progress ?? -1) ? g : best),
@@ -113,18 +102,18 @@ function AnalyticsOverview() {
 
       {/* KPI cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {/* Total Sessions */}
+        {/* Sessions Completed */}
         <div className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                Total sessions
+                Sessions completed
               </p>
               <p className="mt-2 text-2xl font-semibold">
                 {isLoading ? (
-                  <span className="inline-flex h-6 w-16 rounded bg-slate-700 animate-pulse" />
+                  <span className="inline-flex h-6 w-16 rounded bg-slate-200 animate-pulse" />
                 ) : (
-                  totalSessions
+                  `${sessionsCompleted} / ${totalSessions}`
                 )}
               </p>
               <p className="mt-1 text-[11px] text-slate-400">
@@ -146,7 +135,7 @@ function AnalyticsOverview() {
               </p>
               <p className="mt-2 text-2xl font-semibold">
                 {isLoading ? (
-                  <span className="inline-flex h-6 w-14 rounded bg-slate-700 animate-pulse" />
+                  <span className="inline-flex h-6 w-14 rounded bg-slate-200 animate-pulse" />
                 ) : (
                   activeGoals.length
                 )}
@@ -161,31 +150,32 @@ function AnalyticsOverview() {
           </div>
         </div>
 
-        {/* At Risk */}
+        {/* Total Study Time */}
         <div className="bg-white text-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                At risk
+                Total study time
               </p>
               <p className="mt-2 text-2xl font-semibold">
                 {isLoading ? (
-                  <span className="inline-flex h-6 w-14 rounded bg-slate-700 animate-pulse" />
+                  <span className="inline-flex h-6 w-14 rounded bg-slate-200 animate-pulse" />
+                ) : totalStudyTimeSec > 0 ? (
+                  totalStudyTimeSec >= 3600
+                    ? `${(totalStudyTimeSec / 3600).toFixed(1)}h`
+                    : `${Math.round(totalStudyTimeSec / 60)}m`
                 ) : (
-                  atRiskGoals.length
+                  '0m'
                 )}
               </p>
               <p className="mt-1 text-[11px] text-slate-400">
-                {atRiskGoals[0]
-                  ? (atRiskGoals[0].goal.learning_goal ||
-                      (atRiskGoals[0].goal.learner_profile
-                        ?.goal_display_name as string | undefined) ||
-                      'Unnamed goal')
-                  : 'No goals currently flagged.'}
+                {avgSessionDurationSec > 0
+                  ? `Avg ${Math.round(avgSessionDurationSec / 60)}m per session`
+                  : 'Time spent across all sessions.'}
               </p>
             </div>
             <div className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100">
-              <span className="text-lg text-slate-600">⚠️</span>
+              <span className="text-lg text-slate-600">⏱️</span>
             </div>
           </div>
         </div>
@@ -199,7 +189,7 @@ function AnalyticsOverview() {
               </p>
               <p className="mt-2 text-lg font-semibold truncate max-w-[11rem]">
                 {isLoading ? (
-                  <span className="inline-flex h-6 w-24 rounded bg-slate-700 animate-pulse" />
+                  <span className="inline-flex h-6 w-24 rounded bg-slate-200 animate-pulse" />
                 ) : bestGoal ? (
                   (bestGoal.goal.learner_profile?.goal_display_name as string | undefined) ??
                   bestGoal.goal.learning_goal ??
@@ -346,48 +336,24 @@ function AnalyticsOverview() {
                 {sessionTimeSeries.length > 0 ? 'Session durations' : 'No activity yet'}
               </span>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 mb-2">
               Each bar represents how long you spent in a session. Taller bars mean more focused
               study time.
             </p>
-            <div className="mt-4 h-[140px] rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3 flex items-end gap-2 overflow-x-auto">
-              {isLoading && sessionTimeSeries.length === 0 ? (
-                <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400">
-                  Loading activity…
-                </div>
-              ) : sessionTimeSeries.length === 0 ? (
-                <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400">
-                  Complete your first learning session to see activity here.
-                </div>
-              ) : (
-                (() => {
-                  const maxDuration = Math.max(
-                    ...sessionTimeSeries.map((s) => s.duration_sec || 0),
-                  );
-                  const safeMax = maxDuration || 1;
-                  return sessionTimeSeries.map((entry) => {
-                    const heightPct = ((entry.duration_sec || 0) / safeMax) * 100;
-                    return (
-                      <div
-                        key={entry.session_index}
-                        className="flex flex-col items-center justify-end gap-1"
-                      >
-                        <div
-                          className="w-6 rounded-full bg-slate-900/80"
-                          style={{ height: `${Math.max(heightPct, 8)}%` }}
-                        />
-                        <span className="text-[10px] text-slate-500">
-                          S{entry.session_index + 1}
-                        </span>
-                      </div>
-                    );
-                  });
-                })()
-              )}
-            </div>
+            {isLoading && sessionTimeSeries.length === 0 ? (
+              <div className="h-[200px] flex items-center justify-center text-[11px] text-slate-400">
+                Loading activity…
+              </div>
+            ) : sessionTimeSeries.length === 0 ? (
+              <div className="h-[200px] flex items-center justify-center text-[11px] text-slate-400">
+                Complete your first learning session to see activity here.
+              </div>
+            ) : (
+              <SessionTimeChart data={sessionTimeSeries} />
+            )}
           </section>
 
-          {/* Overall progress trend (line-like) */}
+          {/* Overall progress trend (line chart) */}
           <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-slate-900">Overall progress trend</h3>
@@ -395,49 +361,20 @@ function AnalyticsOverview() {
                 {masterySeries.length > 0 ? 'Mastery by session' : 'No trend yet'}
               </span>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 mb-2">
               Track how your mastery percentage changes as you complete more sessions.
             </p>
-            <div className="mt-4 h-[140px] rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3 flex flex-col justify-between">
-              {isLoading && masterySeries.length === 0 ? (
-                <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400">
-                  Loading trend…
-                </div>
-              ) : masterySeries.length === 0 ? (
-                <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400">
-                  Once you have mastery data, we will chart it here.
-                </div>
-              ) : (
-                <>
-                  <div className="flex-1 flex items-end gap-3">
-                    {masterySeries.map((point, idx) => {
-                      const pct = point.mastery_pct ?? 0;
-                      return (
-                        <div
-                          key={idx}
-                          className="flex-1 flex flex-col items-center gap-1 min-w-[1.75rem]"
-                        >
-                          <div className="relative h-20 w-full">
-                            <div className="absolute inset-x-0 bottom-0 h-px bg-slate-200" />
-                            <div
-                              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-slate-900"
-                              style={{ bottom: `${(pct / 100) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] text-slate-500">
-                            S{point.session_index + 1}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-1 flex justify-between text-[10px] text-slate-400">
-                    <span>Lower mastery</span>
-                    <span>Higher mastery</span>
-                  </div>
-                </>
-              )}
-            </div>
+            {isLoading && masterySeries.length === 0 ? (
+              <div className="h-[200px] flex items-center justify-center text-[11px] text-slate-400">
+                Loading trend…
+              </div>
+            ) : masterySeries.length === 0 ? (
+              <div className="h-[200px] flex items-center justify-center text-[11px] text-slate-400">
+                Once you have mastery data, we will chart it here.
+              </div>
+            ) : (
+              <MasteryChart data={masterySeries} />
+            )}
           </section>
         </div>
       </div>
@@ -450,10 +387,7 @@ function AnalyticsOverview() {
 /* ------------------------------------------------------------------ */
 
 function AnalyticsActiveGoal() {
-  const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState<TimeRange>('Last 7 days');
-  const [skillFilter, setSkillFilter] = useState<(typeof SKILL_MASTERY_FILTERS)[number]>('All');
-
   const { userId } = useAuthContext();
   const { goals, selectedGoalId, setSelectedGoalId } = useGoalsContext();
   const { activeGoal } = useActiveGoal();
@@ -463,33 +397,34 @@ function AnalyticsActiveGoal() {
     label: ((g.learner_profile?.goal_display_name as string | undefined) ?? g.learning_goal).slice(0, 50),
   }));
 
-  const { data: metrics, isLoading } = useDashboardMetrics(userId ?? undefined, activeGoal?.id);
+  const { data: metrics, isLoading: dashLoading } = useDashboardMetrics(userId ?? undefined, activeGoal?.id);
+  const { data: behavMetrics, isLoading: behavLoading } = useBehavioralMetrics(userId ?? undefined, activeGoal?.id);
+  const isLoading = dashLoading || behavLoading;
 
   const overallProgress = metrics?.overall_progress ?? 0;
   const goalProgressPct = Math.round((overallProgress ?? 0) * 100);
 
-  const sessionsCompleted = (activeGoal?.learning_path ?? []).filter(
-    (s: { if_learned?: boolean }) => s.if_learned,
-  ).length;
-  const totalSessions = activeGoal?.learning_path?.length ?? 0;
-
+  const sessionsCompleted = behavMetrics?.sessions_completed
+    ?? (activeGoal?.learning_path ?? []).filter(
+      (s: { if_learned?: boolean }) => s.if_learned,
+    ).length;
   const masterySeries = metrics?.mastery_time_series ?? [];
   const sessionSeries = metrics?.session_time_series ?? [];
 
   const quizAvgPct =
-    masterySeries.length > 0
-      ? Math.round(
-          masterySeries.reduce((sum, p) => sum + (p.mastery_pct ?? 0), 0) / masterySeries.length,
-        )
-      : null;
+    behavMetrics?.latest_mastery_rate != null
+      ? Math.round(behavMetrics.latest_mastery_rate * 100)
+      : masterySeries.length > 0
+        ? Math.round(
+            masterySeries.reduce((sum, p) => sum + (p.mastery_pct ?? 0), 0) / masterySeries.length,
+          )
+        : null;
 
-  const totalStudySeconds = sessionSeries.reduce(
-    (sum, s) => sum + (s.duration_sec ?? 0),
-    0,
-  );
+  const totalStudySeconds = behavMetrics?.total_learning_time_sec
+    ?? sessionSeries.reduce((sum, s) => sum + (s.duration_sec ?? 0), 0);
   const studyHours = totalStudySeconds / 3600;
 
-  const streakDays = sessionSeries.length;
+  const streakDays = sessionsCompleted;
 
   const radar = metrics?.skill_radar;
   const skillItems =
@@ -502,15 +437,21 @@ function AnalyticsActiveGoal() {
         }))
       : [];
 
-  const filteredSkills = skillItems.filter((skill) => {
-    if (skillFilter === 'Gaps only') {
-      return skill.current < skill.required;
+  type SkillTier = 'mastered' | 'current' | 'locked';
+  let foundCurrent = false;
+  const tieredSkills = skillItems.map((skill) => {
+    let tier: SkillTier;
+    if (skill.current >= skill.required && skill.required > 0) {
+      tier = 'mastered';
+    } else if (!foundCurrent) {
+      tier = 'current';
+      foundCurrent = true;
+    } else {
+      tier = 'locked';
     }
-    if (skillFilter === 'Mastered') {
-      return skill.current >= skill.required && skill.required > 0;
-    }
-    return true;
+    return { ...skill, tier };
   });
+
   const selectedGoalLabel =
     goalOptions.find((g) => g.value === String(selectedGoalId ?? ''))?.label ??
     ((activeGoal?.learner_profile?.goal_display_name as string | undefined) ?? activeGoal?.learning_goal ?? 'Goal');
@@ -520,15 +461,6 @@ function AnalyticsActiveGoal() {
       {/* Header: title + goal dropdown + time filter */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Link
-            to="/analytics"
-            className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-            Overview
-          </Link>
           <h2 className="text-lg font-semibold text-slate-800">
             Learning Analytics <span className="text-slate-500 font-normal">[{selectedGoalLabel}]</span>
           </h2>
@@ -626,104 +558,175 @@ function AnalyticsActiveGoal() {
         </div>
       </div>
 
-      {/* Skill mastery (from real skill_radar) */}
+      {/* Skill mastery — analytics-focused view */}
       <section className="bg-white rounded-xl border border-slate-200 p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-          <h3 className="text-base font-semibold text-slate-800">Skill mastery</h3>
-          <div className="flex gap-2">
-            {SKILL_MASTERY_FILTERS.map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setSkillFilter(f)}
-                className={cn(
-                  'text-sm font-medium px-3 py-1.5 rounded-md transition-colors',
-                  skillFilter === f ? 'bg-primary-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200',
-                )}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-        </div>
+        <h3 className="text-base font-semibold text-slate-800 mb-4">Skill mastery</h3>
+
         {skillItems.length === 0 && !isLoading ? (
           <p className="text-sm text-slate-500">No skill metrics available yet for this goal.</p>
         ) : (
-          <ul className="space-y-3">
-            {filteredSkills.map((skill) => {
-              const progressPct =
-                skill.required > 0 ? Math.round((skill.current / skill.required) * 100) : 0;
-              const statusLabel =
-                skill.current >= skill.required && skill.required > 0
-                  ? 'Mastered'
-                  : skill.current > 0
-                    ? 'In progress'
-                    : 'Not started';
-
+          <div className="space-y-5">
+            {/* 1. Summary stats */}
+            {(() => {
+              const mastered = tieredSkills.filter((s) => s.tier === 'mastered');
+              const currentSkill = tieredSkills.find((s) => s.tier === 'current');
+              const started = tieredSkills.filter((s) => s.current > 0);
               return (
-                <li
-                  key={skill.id}
-                  className="flex flex-col sm:flex-row sm:items-center gap-3 py-3 border-b border-slate-100 last:border-0"
-                >
-                  <span className="font-medium text-slate-900 sm:w-40">{skill.name}</span>
-                  <span
-                    className={cn(
-                      'text-xs font-medium px-2 py-0.5 rounded-full w-fit',
-                      statusLabel === 'In progress' && 'bg-slate-100 text-slate-700',
-                      statusLabel === 'Not started' && 'bg-slate-100 text-slate-600',
-                      statusLabel === 'Mastered' && 'bg-slate-200 text-slate-800',
-                    )}
-                  >
-                    {statusLabel}
-                  </span>
-                  <div className="flex-1 flex items-center gap-2">
-                    <span className="text-sm text-slate-500 w-24 shrink-0">Mastery</span>
-                    <div className="flex-1 max-w-xs h-2 rounded-full bg-slate-200 overflow-hidden">
-                      <div
-                        className="h-full bg-primary-500 rounded-full transition-all"
-                        style={{ width: `${Math.max(0, Math.min(100, progressPct))}%` }}
-                      />
-                    </div>
-                    <span className="text-sm text-slate-600 whitespace-nowrap">
-                      {skill.current}% / {skill.required}% required
-                    </span>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3">
+                    <p className="text-xs text-slate-500">Skills started</p>
+                    <p className="text-sm font-semibold text-slate-900 mt-1">{started.length} / {tieredSkills.length}</p>
                   </div>
-                  <Button variant="secondary" size="sm">
-                    Practice
-                  </Button>
-                </li>
+                  <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3">
+                    <p className="text-xs text-slate-500">Skills mastered</p>
+                    <p className="text-sm font-semibold text-slate-900 mt-1">{mastered.length} / {tieredSkills.length}</p>
+                  </div>
+                  <div className="rounded-lg bg-slate-50 border border-slate-100 px-4 py-3">
+                    <p className="text-xs text-slate-500">Current focus</p>
+                    <p className="text-sm font-semibold text-slate-900 mt-1 truncate">{currentSkill?.name ?? '—'}</p>
+                  </div>
+                </div>
               );
-            })}
-          </ul>
-        )}
-      </section>
+            })()}
 
-      {/* Skill Radar (data-aware placeholder) */}
-      <section className="bg-white rounded-xl border border-slate-200 p-6">
-        <h3 className="text-base font-semibold text-slate-800 mb-4">Skill Radar</h3>
-        {radar && radar.labels.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-4 items-center">
-            <div className="h-56 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 text-xs">
-              Simple radar-style visualization can be added later.
+            {/* 2. Current focus card */}
+            {(() => {
+              const currentSkill = tieredSkills.find((s) => s.tier === 'current');
+              if (!currentSkill) return null;
+              const pct = currentSkill.required > 0
+                ? Math.round((currentSkill.current / currentSkill.required) * 100)
+                : 0;
+              return (
+                <div className="rounded-xl border border-primary-200 bg-primary-50/50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-semibold text-slate-900 truncate">{currentSkill.name}</h4>
+                        <span className="shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full bg-primary-200 text-primary-800">
+                          Current
+                        </span>
+                      </div>
+                      <div className="mt-3 flex items-center gap-3">
+                        <div className="flex-1 max-w-xs h-2 rounded-full bg-primary-200/60 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary-600 transition-all"
+                            style={{ width: `${Math.max(0, Math.min(100, pct))}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700">{pct}%</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-2">
+                        {currentSkill.current}% current / {currentSkill.required}% required
+                      </p>
+                    </div>
+                    <Link
+                      to="/learning-session"
+                      className="shrink-0 text-xs font-medium text-primary-700 hover:text-primary-900 border border-primary-300 rounded-md px-3 py-1.5 transition-colors hover:bg-primary-100"
+                    >
+                      View current session
+                    </Link>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 3. Upcoming journey + Skill Analysis (two-column) */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left: Timeline */}
+              <div>
+                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-4">Upcoming journey</h4>
+                <div className="relative pl-6">
+                  {/* Vertical line */}
+                  <div className="absolute left-[9px] top-1 bottom-1 w-px bg-slate-200" />
+
+                  {tieredSkills.filter((s) => s.tier !== 'mastered').map((skill) => {
+                    const isCurrent = skill.tier === 'current';
+                    return (
+                      <div key={skill.id} className={cn('relative pb-6 last:pb-0', !isCurrent && 'opacity-50')}>
+                        {/* Node */}
+                        <div className={cn(
+                          'absolute -left-6 top-0.5 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center',
+                          isCurrent
+                            ? 'border-primary-500 bg-primary-500'
+                            : 'border-slate-300 bg-white',
+                        )}>
+                          {isCurrent && (
+                            <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div>
+                          <p className={cn(
+                            'text-sm font-semibold',
+                            isCurrent ? 'text-slate-900' : 'text-slate-500',
+                          )}>
+                            {skill.name}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1.5">
+                            {isCurrent ? (
+                              <>In progress — {skill.current}% / {skill.required}%</>
+                            ) : (
+                              <>
+                                <svg className="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                                </svg>
+                                Locked until previous session
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right: Skill Radar */}
+              <div>
+                <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-4">Skill analysis</h4>
+                {radar && radar.labels.length > 0 ? (
+                  <SkillRadarChart
+                    labels={radar.labels}
+                    currentLevels={radar.current_levels}
+                    requiredLevels={radar.required_levels}
+                  />
+                ) : (
+                  <div className="h-56 bg-slate-50 rounded-lg border border-dashed border-slate-200 flex items-center justify-center text-slate-400 text-sm">
+                    Skill radar will appear once you have skill metrics.
+                  </div>
+                )}
+              </div>
             </div>
-            <ul className="space-y-2 text-xs text-slate-600">
-              {skillItems.map((skill) => {
-                const gap = Math.max(0, (skill.required ?? 0) - (skill.current ?? 0));
-                return (
-                  <li key={skill.id} className="flex items-center justify-between gap-3">
-                    <span className="font-medium text-slate-800">{skill.name}</span>
-                    <span>
-                      {skill.current}% / {skill.required}% required
-                      {gap > 0 && <span className="text-amber-600 ml-1">(-{gap} gap)</span>}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ) : (
-          <div className="h-56 bg-slate-50 rounded-lg border border-dashed border-slate-200 flex items-center justify-center text-slate-400 text-sm">
-            Skill radar will appear here once you have skill metrics.
+
+            {/* 4. Mastered skills (collapsed chips) */}
+            {(() => {
+              const mastered = tieredSkills.filter((s) => s.tier === 'mastered');
+              if (mastered.length === 0) return null;
+              return (
+                <div>
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Mastered</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {mastered.map((skill) => (
+                      <span
+                        key={skill.id}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600"
+                      >
+                        <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {skill.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* 5. Helper text */}
+            <p className="text-[11px] text-slate-400 text-center pt-1">
+              Progress follows the current learning path.
+            </p>
           </div>
         )}
       </section>
@@ -738,41 +741,17 @@ function AnalyticsActiveGoal() {
             <p className="text-xs text-slate-500 mb-3">
               Bars show how long each session lasted for this goal.
             </p>
-            <div className="flex-1 h-40 rounded-lg bg-slate-50 border border-slate-100 px-3 py-3 flex items-end gap-2 overflow-x-auto">
-              {isLoading && sessionSeries.length === 0 ? (
-                <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400">
-                  Loading activity…
-                </div>
-              ) : sessionSeries.length === 0 ? (
-                <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400">
-                  Complete a learning session to see activity here.
-                </div>
-              ) : (
-                (() => {
-                  const maxDuration = Math.max(
-                    ...sessionSeries.map((s) => s.duration_sec || 0),
-                  );
-                  const safeMax = maxDuration || 1;
-                  return sessionSeries.map((entry) => {
-                    const heightPct = ((entry.duration_sec || 0) / safeMax) * 100;
-                    return (
-                      <div
-                        key={entry.session_index}
-                        className="flex flex-col items-center justify-end gap-1"
-                      >
-                        <div
-                          className="w-6 rounded-full bg-slate-900/80"
-                          style={{ height: `${Math.max(heightPct, 8)}%` }}
-                        />
-                        <span className="text-[10px] text-slate-500">
-                          S{entry.session_index + 1}
-                        </span>
-                      </div>
-                    );
-                  });
-                })()
-              )}
-            </div>
+            {isLoading && sessionSeries.length === 0 ? (
+              <div className="h-60 flex items-center justify-center text-[11px] text-slate-400">
+                Loading activity…
+              </div>
+            ) : sessionSeries.length === 0 ? (
+              <div className="h-60 flex items-center justify-center text-[11px] text-slate-400">
+                Complete a learning session to see activity here.
+              </div>
+            ) : (
+              <SessionTimeChart data={sessionSeries} />
+            )}
           </div>
 
           {/* Quiz scores (mastery line) */}
@@ -781,46 +760,17 @@ function AnalyticsActiveGoal() {
             <p className="text-xs text-slate-500 mb-3">
               Mastery percentage for recent sessions with quizzes.
             </p>
-            <div className="flex-1 h-40 rounded-lg bg-slate-50 border border-slate-100 px-4 py-3 flex flex-col justify-between">
-              {isLoading && masterySeries.length === 0 ? (
-                <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400">
-                  Loading scores…
-                </div>
-              ) : masterySeries.length === 0 ? (
-                <div className="w-full h-full flex items-center justify-center text-[11px] text-slate-400">
-                  Quiz scores will appear here after you complete quizzes.
-                </div>
-              ) : (
-                <>
-                  <div className="flex-1 flex items-end gap-3">
-                    {masterySeries.map((point, idx) => {
-                      const pct = point.mastery_pct ?? 0;
-                      return (
-                        <div
-                          key={idx}
-                          className="flex-1 flex flex-col items-center gap-1 min-w-[1.75rem]"
-                        >
-                          <div className="relative h-20 w-full">
-                            <div className="absolute inset-x-0 bottom-0 h-px bg-slate-200" />
-                            <div
-                              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-slate-900"
-                              style={{ bottom: `${(pct / 100) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] text-slate-500">
-                            S{point.session_index + 1}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-1 flex justify-between text-[10px] text-slate-400">
-                    <span>Lower mastery</span>
-                    <span>Higher mastery</span>
-                  </div>
-                </>
-              )}
-            </div>
+            {isLoading && masterySeries.length === 0 ? (
+              <div className="h-60 flex items-center justify-center text-[11px] text-slate-400">
+                Loading scores…
+              </div>
+            ) : masterySeries.length === 0 ? (
+              <div className="h-60 flex items-center justify-center text-[11px] text-slate-400">
+                Quiz scores will appear here after you complete quizzes.
+              </div>
+            ) : (
+              <MasteryChart data={masterySeries} />
+            )}
           </div>
         </div>
       </section>

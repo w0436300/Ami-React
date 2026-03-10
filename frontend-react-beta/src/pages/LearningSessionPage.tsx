@@ -16,6 +16,7 @@ import {
   useSessionActivity,
   useCompleteSession,
   useSubmitContentFeedback,
+  generateLearningContentApi,
 } from '@/api/endpoints/content';
 import { useChatWithTutor } from '@/api/endpoints/chat';
 import type { MasteryEvaluationResponse, ContentSection } from '@/types';
@@ -281,6 +282,24 @@ export function LearningSessionPage() {
     navigate('/learning-path');
   }, [userId, goalId, sessionIndex, sessionActivityMutation, navigate]);
 
+  const ensureCached = useCallback(async () => {
+    if (!userId || goalId == null || sessionIndex == null || !activeGoal) return;
+    const pathSession = activeGoal.learning_path?.[sessionIndex];
+    if (!pathSession) return;
+    await generateLearningContentApi({
+      learner_profile: JSON.stringify(activeGoal.learner_profile ?? {}),
+      learning_path: JSON.stringify(activeGoal.learning_path ?? []),
+      learning_session: JSON.stringify(pathSession),
+      use_search: true,
+      allow_parallel: true,
+      with_quiz: true,
+      goal_context: normalizeGoalContext(activeGoal.goal_context),
+      user_id: userId,
+      goal_id: goalId,
+      session_index: sessionIndex,
+    });
+  }, [userId, goalId, sessionIndex, activeGoal]);
+
   const handleRegenerate = useCallback(async () => {
     if (!userId || goalId == null || sessionIndex == null) return;
     await sessionActivityMutation
@@ -489,6 +508,7 @@ export function LearningSessionPage() {
               goalId={goalId}
               sessionIndex={sessionIndex}
               onMasteryResult={(r) => setMasteryResult(r)}
+              ensureCached={ensureCached}
             />
           </div>
         )}
