@@ -965,7 +965,7 @@ export function SkillGapPage() {
         key={overviewEpoch}
         className="mx-auto w-full max-w-7xl bg-[#F6FAFB] px-4 py-6 sm:px-6 lg:px-8 lg:pb-10"
       >
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 lg:pb-2">
           {/* ---------- Left: skill gap analysis list ---------- */}
           <div className="min-w-0 flex-1">
             <header className="mb-4">
@@ -1091,65 +1091,72 @@ export function SkillGapPage() {
             </ul>
           </div>
 
-          {/* ---------- Right: detail + CTA (reason / suggestedPath / level_confidence from API) ---------- */}
-          <aside className="w-full shrink-0 rounded-2xl border border-[#DCE7EA] bg-white p-6 shadow-[0_1px_3px_rgba(22,50,74,0.06)] lg:sticky lg:top-24 lg:max-w-[380px] lg:flex-1">
-            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-[#3AA6B9]">
-              <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Next step
+          {/* ---------- Right column: aside + actions — one sticky block so buttons never slide under aside ---------- */}
+          <div className="flex w-full shrink-0 flex-col gap-4 lg:max-w-[380px] lg:flex-none">
+            <div className="flex flex-col gap-4 lg:sticky lg:top-24 lg:self-start">
+            <aside className="rounded-2xl border border-[#DCE7EA] bg-white p-6 shadow-[0_1px_3px_rgba(22,50,74,0.06)]">
+              <div className="mb-3 flex items-center gap-2 text-sm font-medium text-[#3AA6B9]">
+                <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Next step
+              </div>
+              <h2 className="text-lg font-bold text-[#16324A]">
+                {selectedName}
+                <span className="block text-sm font-normal text-[#5F7486]">
+                  Current {formatLevelLabel(selected.current_level)} → Target {formatLevelLabel(selected.required_level)}
+                </span>
+              </h2>
+              {reason && (
+                <p className="mt-3 text-sm leading-relaxed break-words text-[#16324A]">{reason}</p>
+              )}
+              <div className="mt-5 grid grid-cols-3 gap-2 border-y border-[#D7E3E8] py-4 text-center">
+                <div>
+                  <p className="text-lg font-bold tabular-nums text-[#16324A]">{gapLv(selected) || '—'}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-[#7E92A3]">Level gap</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-[#16324A]">{confidenceLabel}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-[#7E92A3]">Confidence</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold text-[#16324A]">{selected.addToPlan ? 'Yes' : 'No'}</p>
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-[#7E92A3]">In plan</p>
+                </div>
+              </div>
+              {bullets.length > 0 && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-semibold text-[#16324A]">Focus areas (from analysis)</p>
+                  <ul className="list-inside list-disc space-y-1 break-words text-sm text-[#5F7486]">
+                    {bullets.slice(0, 6).map((b, i) => (
+                      <li key={i}>{b}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </aside>
+
+            {/* Same sticky group as aside — avoids overlap when main scrolls */}
+            <div className="flex w-full flex-col gap-3">
+              <Button
+                size="lg"
+                className="relative z-10 w-full justify-center gap-2 bg-[#63B3C1] text-white hover:bg-[#529EAC] active:bg-[#4A8F9C] focus-visible:ring-[#3AA6B9]"
+                onClick={handleSchedule}
+                loading={isScheduling}
+                disabled={plannedSkills.length === 0 || !hasGaps || isScheduling}
+              >
+                {isScheduling ? 'Creating…' : 'Generate learning path'}
+              </Button>
+              <button
+                type="button"
+                className="relative z-10 w-full text-center text-sm font-medium text-[#5F7486] underline decoration-[#DCE7EA] underline-offset-2 hover:text-[#3AA6B9]"
+                onClick={enterAdjustMode}
+              >
+                Adjust levels manually
+              </button>
             </div>
-            <h2 className="text-lg font-bold text-[#16324A]">
-              {selectedName}
-              <span className="block text-sm font-normal text-[#5F7486]">
-                Current {formatLevelLabel(selected.current_level)} → Target {formatLevelLabel(selected.required_level)}
-              </span>
-            </h2>
-            {reason && (
-              <p className="mt-3 text-sm leading-relaxed text-[#16324A]">{reason}</p>
-            )}
-            {/* No session hours/weeks from API until path exists — show gap + confidence only */}
-            <div className="mt-5 grid grid-cols-3 gap-2 border-y border-[#D7E3E8] py-4 text-center">
-              <div>
-                <p className="text-lg font-bold tabular-nums text-[#16324A]">{gapLv(selected) || '—'}</p>
-                <p className="text-[10px] font-medium uppercase tracking-wider text-[#7E92A3]">Level gap</p>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-[#16324A]">{confidenceLabel}</p>
-                <p className="text-[10px] font-medium uppercase tracking-wider text-[#7E92A3]">Confidence</p>
-              </div>
-              <div>
-                <p className="text-lg font-bold text-[#16324A]">{selected.addToPlan ? 'Yes' : 'No'}</p>
-                <p className="text-[10px] font-medium uppercase tracking-wider text-[#7E92A3]">In plan</p>
-              </div>
             </div>
-            {bullets.length > 0 && (
-              <div className="mt-4">
-                <p className="mb-2 text-xs font-semibold text-[#16324A]">Focus areas (from analysis)</p>
-                <ul className="list-inside list-disc space-y-1 text-sm text-[#5F7486]">
-                  {bullets.slice(0, 6).map((b, i) => (
-                    <li key={i}>{b}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <Button
-              size="lg"
-              className="mt-6 w-full justify-center gap-2 bg-[#63B3C1] text-white hover:bg-[#529EAC] active:bg-[#4A8F9C] focus-visible:ring-[#3AA6B9]"
-              onClick={handleSchedule}
-              loading={isScheduling}
-              disabled={plannedSkills.length === 0 || !hasGaps || isScheduling}
-            >
-              {isScheduling ? 'Creating…' : 'Generate learning path'}
-            </Button>
-            <button
-              type="button"
-              className="mt-4 w-full text-center text-sm text-[#5F7486] underline decoration-[#DCE7EA] underline-offset-2 hover:text-[#3AA6B9]"
-              onClick={enterAdjustMode}
-            >
-              Adjust levels manually
-            </button>
-          </aside>
+          </div>
         </div>
       </div>
     );
