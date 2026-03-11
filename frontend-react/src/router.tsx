@@ -12,6 +12,7 @@ import { SkillGapPage } from '@/pages/SkillGapPage';
 import { RefineGoalExamplePage } from '@/pages/RefineGoalExamplePage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { useAuthContext } from '@/context/AuthContext';
+import { useGoalsContext } from '@/context/GoalsContext';
 import { SidebarCollapseProvider } from '@/context/SidebarCollapseContext';
 
 // Vite 的 base（如 /Ami-React/）去掉末尾斜杠作为 React Router basename，适配 GitHub Pages
@@ -28,10 +29,26 @@ function AuthGuard() {
   );
 }
 
-/** Root redirect: routes users to onboarding (goals routing comes later) */
+/**
+ * Root redirect: after login, same rule as postAuthRedirect —
+ * goals exist → /goals (goal management), empty → /onboarding.
+ */
 function RootRedirect() {
   const { isAuthenticated } = useAuthContext();
+  const { goals, isLoading } = useGoalsContext();
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
+
+  // GoalsProvider fetches GET /v1/goals/{user_id} on auth; wait to avoid flashing onboarding
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center text-sm font-medium text-slate-600">
+        Loading your workspace…
+      </div>
+    );
+  }
+
+  if (goals.length > 0) return <Navigate to="/goals" replace />;
   return <Navigate to="/onboarding" replace />;
 }
 

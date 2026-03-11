@@ -77,7 +77,8 @@ export function OnboardingPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [learningGoal, setLearningGoal] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedPreferenceId, setSelectedPreferenceId] = useState<string | null>(null);
+  /** Default persona when user does not choose — balanced for faster course load than visual */
+  const [selectedPreferenceId, setSelectedPreferenceId] = useState<string | null>('balanced');
   const [resumeText, setResumeText] = useState('');
   const personas = personasData?.personas ?? {};
 
@@ -114,10 +115,10 @@ export function OnboardingPage() {
   const handleBeginLearning = useCallback(() => {
     const trimmed = learningGoal.trim();
     if (!trimmed) return;
-    const personaKey = selectedPreferenceId;
+    const personaKey = selectedPreferenceId ?? 'balanced';
     // Build learnerInformation similar to old frontend: persona + optional resume summary
     let learnerInformation = resumeText;
-    if (personaKey && personas[personaKey]) {
+    if (personas[personaKey]) {
       const dims = personas[personaKey].fslsm_dimensions;
       const dimStr = Object.entries(dims)
         .map(([k, v]) => `${k}=${v}`)
@@ -160,7 +161,7 @@ export function OnboardingPage() {
           </p>
         </section>
         {/* ── Main content (goal + categories + preferences) ── */}
-        <section className="max-w-5xl w-full mx-auto px-4 space-y-8 pb-12">
+        <section className="max-w-5xl w-full mx-auto px-4 space-y-8 pb-[7px]">
           {/* Main prompt */}
           <p className="text-center text-sm font-medium text-slate-700">What would you like to learn today?</p>
 
@@ -230,7 +231,7 @@ export function OnboardingPage() {
               })}
             </div>
 
-            {/* Selected preference detail card: hidden until a style is chosen */}
+            {/* Selected preference detail card (defaults to Balanced — faster course load than visual) */}
             {selectedPreferenceId && (() => {
               const selected =
                 LEARNING_PREFERENCES.find((p) => p.id === selectedPreferenceId) ?? LEARNING_PREFERENCES[0];
@@ -260,8 +261,8 @@ export function OnboardingPage() {
         </section>
 
         {/* ── Bottom action bar：secondary resume upload + primary CTA ── */}
-        <section className="max-w-3xl w-full mx-auto px-4 pt-4 pb-10 border-t border-slate-50 mt-2">
-          <div className="flex flex-col items-center gap-4">
+        <section className="max-w-3xl w-full mx-auto px-4 pt-0 pb-4 border-t border-slate-50 mt-2">
+          <div className="flex flex-col items-center gap-[9px] border-none">
             <div className="flex flex-wrap justify-center gap-3">
               <>
                 <input

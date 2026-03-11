@@ -19,6 +19,7 @@ function EyeIcon({ open }: { open: boolean }) {
 }
 import { useLogin } from '@/api/endpoints/auth';
 import { useAuthContext } from '@/context/AuthContext';
+import { navigateAfterAuth } from '@/lib/postAuthRedirect';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ export function LoginPage() {
     try {
       const data = await loginMutation.mutateAsync({ username: username.trim(), password });
       login(data);
-      navigate('/', { replace: true });
+      await navigateAfterAuth(navigate, data.username);
     } catch {
       setError('Invalid username or password. Please try again.');
     }

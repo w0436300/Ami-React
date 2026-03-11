@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button, InputField } from '@/components/ui';
 import { useRegister } from '@/api/endpoints/auth';
 import { useAuthContext } from '@/context/AuthContext';
+import { navigateAfterAuth } from '@/lib/postAuthRedirect';
 
 const USERNAME_MIN = 3;
 const USERNAME_MAX = 32;
@@ -92,7 +93,7 @@ export function RegisterPage() {
         password,
       });
       login(data);
-      navigate('/', { replace: true });
+      await navigateAfterAuth(navigate, data.username);
     } catch {
       setError('Failed to create account. Please try again.');
     }
