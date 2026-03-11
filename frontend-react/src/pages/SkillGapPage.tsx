@@ -108,6 +108,27 @@ function normalizeLevel(level: string | undefined, levels: string[]): string {
 }
 
 /**
+ * Backend gap objects may expose level under different keys or as enum-like { value: "beginner" }.
+ * Avoid defaulting to unlearned when the API actually sent another level in an alternate field.
+ */
+function coerceLevelFromGap(sg: Record<string, unknown>, keys: string[]): string {
+  for (const k of keys) {
+    const v = sg[k];
+    if (v == null) continue;
+    if (typeof v === 'string') {
+      const s = v.trim();
+      if (s) return s;
+      continue;
+    }
+    if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+      const o = v as Record<string, unknown>;
+      if (typeof o.value === 'string' && o.value.trim()) return o.value.trim();
+    }
+  }
+  return '';
+}
+
+/**
  * Backend + config may disagree on level strings; indexOf alone gives -1 and breaks bars/gap.
  * Fixed order matches backend LevelCurrent/LevelRequired.
  */
@@ -136,6 +157,39 @@ function skillGapStorageKey(goal: string, learnerInformation: string): string {
   let h = 0;
   for (let i = 0; i < slice.length; i++) h = (h * 31 + slice.charCodeAt(i)) | 0;
   return `${SKILLGAP_STORAGE_KEY}_${h}`;
+}
+
+/**
+ * Backend create-learner-profile-with-info parses skill_gaps with ast.literal_eval only.
+ * JSON.stringify produces JSON (double quotes) which literal_eval cannot parse.
+ * Emit Python literal syntax so backend receives a list of dicts without backend changes.
+ */
+function skillGapsToPythonLiteral(value: unknown): string {
+  if (value === null || value === undefined) return 'None';
+  if (typeof value === 'boolean') return value ? 'True' : 'False';
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return 'None';
+    return String(value);
+  }
+  if (typeof value === 'string') {
+    return "'" + value.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+  }
+  if (Array.isArray(value)) {
+    return '[' + value.map((v) => skillGapsToPythonLiteral(v)).join(', ') + ']';
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).filter(
+      ([, v]) => v !== undefined,
+    );
+    return (
+      '{' +
+      entries
+        .map(([k, v]) => skillGapsToPythonLiteral(k) + ': ' + skillGapsToPythonLiteral(v))
+        .join(', ') +
+      '}'
+    );
+  }
+  return 'None';
 }
 
 /** Backend LevelRequired has no unlearned — target track must not offer it */
@@ -612,7 +666,16 @@ export function SkillGapPage() {
         })) as unknown as Record<string, unknown>;
 
         setIdentifyResponse(resp);
-        const rawGaps = (resp as any).skill_gaps;
+        let rawGaps = (resp as any).skill_gaps;
+        /* API may return { skill_gaps: [ ... ] } nested once */
+        if (
+          rawGaps &&
+          typeof rawGaps === 'object' &&
+          !Array.isArray(rawGaps) &&
+          Array.isArray((rawGaps as Record<string, unknown>).skill_gaps)
+        ) {
+          rawGaps = (rawGaps as { skill_gaps: SkillGapItem[] }).skill_gaps;
+        }
         const gapArray: SkillGapItem[] = Array.isArray(rawGaps)
           ? (rawGaps as SkillGapItem[])
           : rawGaps && typeof rawGaps === 'object'
@@ -628,12 +691,28 @@ export function SkillGapPage() {
         const defaultRequired = targetLevels[0] ?? levels[1] ?? levels[0];
 
         const mapped = normalizedGaps.map((sg) => {
-          let required_level = normalizeLevel(sg.required_level ?? defaultRequired, levels);
+          const sgRec = sg as Record<string, unknown>;
+          const rawCurrent = coerceLevelFromGap(sgRec, [
+            'current_level',
+            'observed_level',
+            'current',
+            'learner_level',
+          ]);
+          const rawRequired = coerceLevelFromGap(sgRec, [
+            'required_level',
+            'expected_level',
+            'target_level',
+          ]);
+          let required_level = normalizeLevel(rawRequired || sg.required_level || defaultRequired, levels);
           if (String(required_level).toLowerCase() === 'unlearned')
             required_level = normalizeLevel(defaultRequired, levels);
+          /* Only fall back to levels[0] when backend sent no usable current — keeps bars valid */
+          const current_level = rawCurrent
+            ? normalizeLevel(rawCurrent, levels)
+            : normalizeLevel(sg.current_level ?? levels[0], levels);
           return {
-            original: sg,
-            current_level: normalizeLevel(sg.current_level ?? levels[0], levels),
+            original: { ...sg, current_level: rawCurrent || sg.current_level, required_level: rawRequired || sg.required_level },
+            current_level,
             required_level,
             addToPlan: sg.is_gap !== false,
           };
@@ -732,7 +811,7 @@ export function SkillGapPage() {
       const profileResult = await createProfileMutation.mutateAsync({
         learning_goal: refinedGoal,
         learner_information: state.learnerInformation,
-        skill_gaps: JSON.stringify(filteredGaps),
+        skill_gaps: skillGapsToPythonLiteral(filteredGaps),
       });
       const learnerProfile = profileResult.learner_profile;
 
@@ -908,12 +987,18 @@ export function SkillGapPage() {
               {localSkills.map((skill, idx) => {
                 const name = skill.original.skill_name || skill.original.name || `Skill ${idx + 1}`;
                 const g = gapLv(skill);
-                const curIdx = levelIndex(skill.current_level, levels);
-                const tgtIdx = levelIndex(skill.required_level, levels);
+                /*
+                 * Use the SAME ladder as Adjust UI target row (levelsWithoutUnlearned).
+                 * Otherwise main bar uses full levels (unlearned..expert) while Target track
+                 * has one fewer step — same level name gets different index → bar looks wrong vs dots.
+                 */
+                const lvlsBar = levelsWithoutUnlearned(levels);
+                const lvlsForBar = lvlsBar.length > 0 ? lvlsBar : levels;
+                const curIdx = levelIndex(skill.current_level, lvlsForBar);
+                const tgtIdx = levelIndex(skill.required_level, lvlsForBar);
                 /*
                  * Fill must change when EITHER current or target changes.
-                 * Absolute curIdx/maxIdx only changes when current moves — adjusting target alone left bar static.
-                 * Use progress toward target: (cur+1)/(tgt+1) in index space so both edits affect width.
+                 * Progress toward target: (cur+1)/(tgt+1) in the same index space as Target track.
                  */
                 let spanPct = 100;
                 if (curIdx >= tgtIdx) {
@@ -952,7 +1037,11 @@ export function SkillGapPage() {
                             text: 'On target',
                             className: 'bg-[#E8F7FA] text-[#5F7486] border border-[#D7E3E8]',
                           };
-                const currentLabel = formatLevelLabel(skill.current_level);
+                /* Prefer normalized ladder label; backend may send same level under alternate keys (coerced into current_level when mapping) */
+                const currentLabel =
+                  skill.current_level && String(skill.current_level).trim()
+                    ? formatLevelLabel(skill.current_level)
+                    : '—';
 
                 return (
                   <li key={`${name}-${idx}-${skill.current_level}-${skill.required_level}-${skill.addToPlan}`}>

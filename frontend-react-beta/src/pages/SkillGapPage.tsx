@@ -94,6 +94,68 @@ function formatLevelLabel(level: string) {
   return level.charAt(0).toUpperCase() + level.slice(1);
 }
 
+/** Match backend/config level string so indexOf/gap calculations stay correct */
+function normalizeLevel(level: string | undefined, levels: string[]): string {
+  if (!level || !levels.length) return level ?? '';
+  const lower = String(level).toLowerCase();
+  const found = levels.find((x) => String(x).toLowerCase() === lower);
+  return found ?? level;
+}
+
+const LEVEL_ORDER: Record<string, number> = {
+  unlearned: 0,
+  beginner: 1,
+  intermediate: 2,
+  advanced: 3,
+  expert: 4,
+};
+
+function levelIndex(level: string | undefined, levels: string[]): number {
+  if (!level) return 0;
+  const normalized = normalizeLevel(level, levels);
+  const i = levels.indexOf(normalized);
+  if (i >= 0) return i;
+  const key = String(level).toLowerCase();
+  if (key in LEVEL_ORDER) return LEVEL_ORDER[key];
+  return 0;
+}
+
+function levelsWithoutUnlearned(levels: string[]): string[] {
+  return levels.filter((l) => String(l).toLowerCase() !== 'unlearned');
+}
+
+/**
+ * Backend create-learner-profile parses skill_gaps with ast.literal_eval only.
+ * JSON.stringify is not parseable; emit Python literal so no backend change is needed.
+ */
+function skillGapsToPythonLiteral(value: unknown): string {
+  if (value === null || value === undefined) return 'None';
+  if (typeof value === 'boolean') return value ? 'True' : 'False';
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return 'None';
+    return String(value);
+  }
+  if (typeof value === 'string') {
+    return "'" + value.replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+  }
+  if (Array.isArray(value)) {
+    return '[' + value.map((v) => skillGapsToPythonLiteral(v)).join(', ') + ']';
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>).filter(
+      ([, v]) => v !== undefined,
+    );
+    return (
+      '{' +
+      entries
+        .map(([k, v]) => skillGapsToPythonLiteral(k) + ': ' + skillGapsToPythonLiteral(v))
+        .join(', ') +
+      '}'
+    );
+  }
+  return 'None';
+}
+
 function SummaryChip({
   children,
   tone = 'default',
@@ -156,8 +218,8 @@ function LevelProgress({
   currentLevel: string;
   targetLevel: string;
 }) {
-  const currentIdx = Math.max(0, levels.indexOf(currentLevel));
-  const targetIdx = Math.max(0, levels.indexOf(targetLevel));
+  const currentIdx = levelIndex(currentLevel, levels);
+  const targetIdx = levelIndex(targetLevel, levels);
   const start = Math.min(currentIdx, targetIdx);
   const end = Math.max(currentIdx, targetIdx);
   const left = levels.length > 1 ? `${(start / (levels.length - 1)) * 100}%` : '0%';
@@ -344,13 +406,21 @@ export function SkillGapPage() {
           skill_name: (sg.skill_name ?? sg.name ?? '').toString(),
         }));
 
+        const targetLevels = levelsWithoutUnlearned(levels);
+        const defaultRequired = targetLevels[0] ?? levels[1] ?? levels[0];
+
         setLocalSkills(
-          normalizedGaps.map((sg) => ({
-            original: sg,
-            current_level: sg.current_level ?? levels[0],
-            required_level: sg.required_level ?? (levels[1] ?? levels[0]),
-            addToPlan: sg.is_gap !== false,
-          })),
+          normalizedGaps.map((sg) => {
+            let required_level = normalizeLevel(sg.required_level ?? defaultRequired, levels);
+            if (String(required_level).toLowerCase() === 'unlearned')
+              required_level = normalizeLevel(defaultRequired, levels);
+            return {
+              original: sg,
+              current_level: normalizeLevel(sg.current_level ?? levels[0], levels),
+              required_level,
+              addToPlan: sg.is_gap !== false,
+            };
+          }),
         );
 
         try {
@@ -376,16 +446,31 @@ export function SkillGapPage() {
     setLocalSkills((prev) => prev.map((s, i) => (i === idx ? { ...s, addToPlan: !s.addToPlan } : s)));
   }, []);
 
-  const handleTargetChange = useCallback((idx: number, level: string) => {
-    setLocalSkills((prev) => prev.map((s, i) => (i === idx ? { ...s, required_level: level } : s)));
-  }, []);
+  const handleTargetChange = useCallback(
+    (idx: number, level: string) => {
+      const targetLevels = levelsWithoutUnlearned(levels);
+      const normalized =
+        String(level).toLowerCase() === 'unlearned'
+          ? normalizeLevel(targetLevels[0] ?? level, levels)
+          : normalizeLevel(level, levels);
+      setLocalSkills((prev) => prev.map((s, i) => (i === idx ? { ...s, required_level: normalized } : s)));
+    },
+    [levels],
+  );
 
-  const handleCurrentChange = useCallback((idx: number, level: string) => {
-    setLocalSkills((prev) => prev.map((s, i) => (i === idx ? { ...s, current_level: level } : s)));
-  }, []);
+  const handleCurrentChange = useCallback(
+    (idx: number, level: string) => {
+      setLocalSkills((prev) =>
+        prev.map((s, i) => (i === idx ? { ...s, current_level: normalizeLevel(level, levels) } : s)),
+      );
+    },
+    [levels],
+  );
 
   const plannedSkills = localSkills.filter((s) => s.addToPlan);
-  const hasGaps = plannedSkills.some((s) => levels.indexOf(s.required_level) > levels.indexOf(s.current_level));
+  const hasGaps = plannedSkills.some(
+    (s) => levelIndex(s.required_level, levels) > levelIndex(s.current_level, levels),
+  );
   const selectedCount = plannedSkills.length;
   const identifiedCount = localSkills.length;
 
@@ -415,7 +500,7 @@ export function SkillGapPage() {
       const profileResult = await createProfileMutation.mutateAsync({
         learning_goal: refinedGoal,
         learner_information: state.learnerInformation,
-        skill_gaps: JSON.stringify(filteredGaps),
+        skill_gaps: skillGapsToPythonLiteral(filteredGaps),
       });
       const learnerProfile = profileResult.learner_profile;
 
