@@ -988,36 +988,46 @@ export function SkillGapPage() {
                 const name = skill.original.skill_name || skill.original.name || `Skill ${idx + 1}`;
                 const g = gapLv(skill);
                 /*
-                 * Use the SAME ladder as Adjust UI target row (levelsWithoutUnlearned).
-                 * Otherwise main bar uses full levels (unlearned..expert) while Target track
-                 * has one fewer step — same level name gets different index → bar looks wrong vs dots.
+                 * List bar width must match SkillCard "Current level" row (LevelTrackRow variant=current).
+                 * Same formula as LevelTrackRow fill: position on full ladder (unlearned..expert).
+                 * Previous (cur+1)/(tgt+1) was "progress toward target" — different semantics → looked wrong vs dots.
                  */
-                const lvlsBar = levelsWithoutUnlearned(levels);
-                const lvlsForBar = lvlsBar.length > 0 ? lvlsBar : levels;
-                const curIdx = levelIndex(skill.current_level, lvlsForBar);
-                const tgtIdx = levelIndex(skill.required_level, lvlsForBar);
-                /*
-                 * Fill must change when EITHER current or target changes.
-                 * Progress toward target: (cur+1)/(tgt+1) in the same index space as Target track.
-                 */
-                let spanPct = 100;
-                if (curIdx >= tgtIdx) {
-                  spanPct = 100; /* at or past target */
-                } else if (tgtIdx > 0) {
-                  spanPct = Math.round(((curIdx + 1) / (tgtIdx + 1)) * 100);
-                } else {
-                  spanPct = Math.round((curIdx + 1) * 20); /* fallback if tgtIdx 0 */
-                }
-                if (g > 0 && spanPct < 14) spanPct = 14;
-                if (g === 0) spanPct = 100;
-                /* Track #D7E3E8; fill #1FA89A — darker when row selected for focus */
+                /* Ladder positions 0..100% for current vs target (same scale — full levels array) */
+                const nLvls = levels.length;
+                const maxIdx = Math.max(nLvls - 1, 1);
+                const curIdx = levelIndex(skill.current_level, levels);
+                const tgtIdx = levelIndex(skill.required_level, levels);
+                const currentPct =
+                  maxIdx > 0 ? Math.round((curIdx / maxIdx) * 100) : 0;
+                const targetPct =
+                  maxIdx > 0 ? Math.round((tgtIdx / maxIdx) * 100) : 100;
+                const gapStartPct = Math.min(currentPct, targetPct);
+                const gapEndPct = Math.max(currentPct, targetPct);
+                const gapWidthPct = Math.max(0, gapEndPct - gapStartPct);
+                /* When already at/past target: single full bar, no gap layer */
+                const onTarget = curIdx >= tgtIdx;
                 const isSelected = idx === selectedSkillIdx;
-                const spanColor =
-                  g === 0
-                    ? 'bg-[#C5EBE5]' /* on target: soft teal tint, distinct from track */
-                    : isSelected
-                      ? 'bg-[#148A7D]' /* selected + has gap: deeper teal */
+                /* Solid fill for "achieved" segment — teal normally, deeper when selected; soft when on target */
+                const achievedColor = onTarget
+                  ? 'bg-[#C5EBE5]'
+                  : isSelected
+                    ? 'bg-[#148A7D]'
+                    : g >= 3
+                      ? 'bg-[#E85D5D]'
                       : 'bg-[#1FA89A]';
+                /* Gap strip: diagonal stripes via inline style (Tailwind arbitrary gradient can be flaky) */
+                const gapStripeStyle: Record<string, string> =
+                  g >= 3
+                    ? {
+                        backgroundColor: 'rgba(254,226,226,0.85)',
+                        backgroundImage:
+                          'repeating-linear-gradient(135deg, transparent, transparent 3px, rgba(232,93,93,0.35) 3px, rgba(232,93,93,0.35) 6px)',
+                      }
+                    : {
+                        backgroundColor: 'rgba(191,231,211,0.5)',
+                        backgroundImage:
+                          'repeating-linear-gradient(135deg, transparent, transparent 3px, rgba(26,168,154,0.22) 3px, rgba(26,168,154,0.22) 6px)',
+                      };
                 const chip =
                   g >= 3
                     ? { text: 'Major gap', className: 'bg-red-50 text-red-700 border border-red-100' }
@@ -1066,14 +1076,69 @@ export function SkillGapPage() {
                           {chip.text}
                         </span>
                       </div>
-                      {/* Span segment: width tied to current+target so adjust updates; key forces DOM refresh */}
-                      <div className="relative h-1.5 w-full overflow-hidden rounded-sm bg-[#D7E3E8]">
+                      {/* Three-layer bar: track | achieved (solid) | gap (striped) + target marker */}
+                      <div className="w-full">
+                        <div className="mb-0.5 flex items-center justify-between gap-2 text-[10px] font-medium text-[#5F7486]">
+                          <span className="tabular-nums">
+                            {g > 0 ? (
+                              <>
+                                Gap: <span className="text-[#16324A]">{g}</span> lvl
+                              </>
+                            ) : (
+                              <span className="text-[#217A57]">On target</span>
+                            )}
+                          </span>
+                          <span className="shrink-0 text-[#7E92A3]">
+                            Target: {formatLevelLabel(skill.required_level)}
+                          </span>
+                        </div>
                         <div
-                          key={`fill-${idx}-${skill.current_level}-${skill.required_level}-${spanPct}`}
-                          className={cn('block h-full min-w-[8px] rounded-sm transition-[width] duration-300', spanColor)}
-                          style={{ width: `${spanPct}%` }}
-                          aria-hidden
-                        />
+                          className="relative h-2 w-full overflow-hidden rounded-sm bg-[#D7E3E8]"
+                          title={`Current ${currentLabel} → Target ${formatLevelLabel(skill.required_level)}${g > 0 ? ` (gap ${g} lvl)` : ''}`}
+                        >
+                          {onTarget ? (
+                            <div
+                              key={`achieved-${idx}-${skill.current_level}`}
+                              className={cn(
+                                'absolute left-0 top-0 h-full min-w-[8px] rounded-sm transition-all duration-300',
+                                achievedColor,
+                              )}
+                              style={{ width: '100%' }}
+                              aria-hidden
+                            />
+                          ) : (
+                            <>
+                              {/* Achieved: 0 → current */}
+                              <div
+                                key={`achieved-${idx}-${skill.current_level}`}
+                                className={cn(
+                                  'absolute left-0 top-0 h-full min-w-[6px] rounded-l-sm transition-all duration-300',
+                                  achievedColor,
+                                )}
+                                style={{ width: `${Math.max(currentPct, 6)}%` }}
+                                aria-hidden
+                              />
+                              {/* Gap fill: current → target (striped) */}
+                              {gapWidthPct > 0 && currentPct < targetPct && (
+                                <div
+                                  className="absolute top-0 h-full transition-all duration-300"
+                                  style={{
+                                    left: `${currentPct}%`,
+                                    width: `${gapWidthPct}%`,
+                                    ...gapStripeStyle,
+                                  }}
+                                  aria-hidden
+                                />
+                              )}
+                              {/* Target marker — vertical line at destination */}
+                              <div
+                                className="pointer-events-none absolute top-0 z-10 h-full w-0.5 -translate-x-1/2 rounded-full bg-[#16324A] shadow-sm transition-all duration-300"
+                                style={{ left: `${targetPct}%` }}
+                                aria-hidden
+                              />
+                            </>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center justify-between gap-2 text-xs text-[#5F7486]">
                         <span>Current: {currentLabel}</span>
