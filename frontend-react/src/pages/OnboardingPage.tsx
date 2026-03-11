@@ -161,7 +161,7 @@ export function OnboardingPage() {
           </p>
         </section>
         {/* ── Main content (goal + categories + preferences) ── */}
-        <section className="max-w-5xl w-full mx-auto px-4 space-y-8 pb-[7px]">
+        <section className="max-w-5xl w-full mx-auto px-4 space-y-8 pb-12">
           {/* Main prompt */}
           <p className="text-center text-sm font-medium text-slate-700">What would you like to learn today?</p>
 
@@ -261,8 +261,8 @@ export function OnboardingPage() {
         </section>
 
         {/* ── Bottom action bar：secondary resume upload + primary CTA ── */}
-        <section className="max-w-3xl w-full mx-auto px-4 pt-0 pb-4 border-t border-slate-50 mt-2">
-          <div className="flex flex-col items-center gap-[9px] border-none">
+        <section className="max-w-3xl w-full mx-auto px-4 pt-4 pb-10 border-t border-slate-50 mt-2">
+          <div className="flex flex-col items-center gap-4">
             <div className="flex flex-wrap justify-center gap-3">
               <>
                 <input

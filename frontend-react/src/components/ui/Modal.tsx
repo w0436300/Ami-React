@@ -34,7 +34,12 @@ export function Modal({ open, onClose, title, children, className, maxWidth = 'm
       ref={dialogRef}
       className={cn(
         'backdrop:bg-black/40 backdrop:backdrop-blur-sm',
-        'rounded-lg shadow-lg p-0 w-full border-none',
+        /* Center in viewport: native dialog positioning varies by browser */
+        /* Slightly above vertical center */
+        'fixed left-1/2 top-[38%] z-[100] -translate-x-1/2 -translate-y-1/2',
+        'rounded-lg shadow-lg p-0 border-none',
+        /* Bounded width so translate centers the panel */
+        'w-[min(100vw-2rem,42rem)] max-h-[90vh] overflow-y-auto',
         maxWidth,
         'animate-in fade-in',
       )}
