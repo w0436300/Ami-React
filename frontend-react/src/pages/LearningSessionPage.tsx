@@ -103,8 +103,14 @@ function youtubeIdFromEmbed(embed: string): string | null {
 function LazyYouTubeEmbed({ embedUrl, watchUrl }: { embedUrl: string; watchUrl: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [src, setSrc] = useState<string | null>(null);
+  const [posterFailed, setPosterFailed] = useState(false);
+  const [iframeReady, setIframeReady] = useState(false);
   const videoId = youtubeIdFromEmbed(embedUrl);
-  const posterUrl = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null;
+  // maxresdefault often blank/404 for shorts; hqdefault is more reliable
+  const posterUrl =
+    videoId && !posterFailed
+      ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+      : null;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -112,8 +118,8 @@ function LazyYouTubeEmbed({ embedUrl, watchUrl }: { embedUrl: string; watchUrl: 
     const obs = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          // Load player without autoplay — avoids blasting audio when scrolling
           setSrc(embedUrl);
+          setIframeReady(false);
           obs.disconnect();
         }
       },
@@ -123,54 +129,98 @@ function LazyYouTubeEmbed({ embedUrl, watchUrl }: { embedUrl: string; watchUrl: 
     return () => obs.disconnect();
   }, [embedUrl, src]);
 
-  // Click loads immediately and starts playback
+  // If iframe never fires onLoad (cross-origin quirks), clear overlay after a few seconds
+  useEffect(() => {
+    if (!src) return;
+    const t = window.setTimeout(() => setIframeReady(true), 8000);
+    return () => clearTimeout(t);
+  }, [src]);
+
   const loadPlayer = useCallback(() => {
     const withAutoplay = `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`;
     setSrc(withAutoplay);
+    setIframeReady(false);
   }, [embedUrl]);
 
   return (
-    <div ref={containerRef} className="relative block aspect-video w-full overflow-hidden bg-slate-900">
+    <div
+      ref={containerRef}
+      className="relative block aspect-video w-full overflow-hidden rounded-b-lg bg-slate-100 ring-1 ring-inset ring-slate-200/80"
+    >
       {src ? (
-        <iframe
-          title="Video"
-          src={src}
-          className="absolute inset-0 h-full w-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-          loading="lazy"
-        />
+        <>
+          <iframe
+            title="Video"
+            src={src}
+            className={cn(
+              'absolute inset-0 h-full w-full transition-opacity duration-500',
+              iframeReady ? 'opacity-100' : 'opacity-0',
+            )}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            loading="lazy"
+            onLoad={() => setIframeReady(true)}
+          />
+          {/* Cover black iframe paint with light placeholder until ready */}
+          {!iframeReady && (
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-100"
+              aria-hidden
+            >
+              <div className="h-10 w-10 rounded-full border-2 border-primary-200 border-t-primary-500 animate-spin" />
+              <span className="text-xs font-medium text-slate-500">Loading player…</span>
+            </div>
+          )}
+        </>
       ) : (
         <button
           type="button"
           onClick={loadPlayer}
-          className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900 text-white outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+          className={cn(
+            'absolute inset-0 flex flex-col items-center justify-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-primary-400',
+            posterUrl
+              ? 'text-white'
+              : 'bg-gradient-to-b from-slate-100 to-slate-200 text-slate-700',
+          )}
         >
           {posterUrl && (
-            <img
-              src={posterUrl}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover opacity-90"
-              loading="lazy"
-              decoding="async"
-            />
+            <>
+              <img
+                src={posterUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover"
+                loading="eager"
+                decoding="async"
+                onError={() => setPosterFailed(true)}
+              />
+              {/* So play button stays readable on any thumbnail */}
+              <div className="absolute inset-0 bg-slate-900/35" aria-hidden />
+            </>
           )}
           <span className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full bg-red-600 shadow-lg transition-transform hover:scale-105">
-            <svg className="ml-1 h-7 w-7" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <svg className="ml-1 h-7 w-7 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M8 5v14l11-7z" />
             </svg>
           </span>
-          <span className="relative z-10 text-xs font-medium text-white/90 drop-shadow">
+          <span
+            className={cn(
+              'relative z-10 text-xs font-medium drop-shadow',
+              posterUrl ? 'text-white' : 'text-slate-600',
+            )}
+          >
             Click to load video
           </span>
           <a
             href={watchUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="relative z-10 mt-1 text-[11px] text-white/70 underline hover:text-white"
+            className={cn(
+              'relative z-10 mt-1 text-[11px] underline',
+              posterUrl ? 'text-white/85 hover:text-white' : 'text-slate-500 hover:text-slate-700',
+            )}
             onClick={(e) => e.stopPropagation()}
           >
-            Open on YouTube instead
+            Don&apos;t want to wait? Open in new window
           </a>
         </button>
       )}
@@ -206,7 +256,7 @@ const lessonMarkdownComponents: Components = {
               rel="noopener noreferrer"
               className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline"
             >
-              在新窗口打开
+              Don&apos;t want to wait? Open in new window
             </a>
           </div>
         </span>
@@ -223,7 +273,7 @@ const lessonMarkdownComponents: Components = {
           )}
           <video src={href} controls className="max-h-[480px] w-full" playsInline>
             <a href={href} target="_blank" rel="noopener noreferrer">
-              在新窗口打开
+              Don&apos;t want to wait? Open in new window
             </a>
           </video>
           <div className="bg-slate-900 px-3 py-2">
@@ -233,7 +283,7 @@ const lessonMarkdownComponents: Components = {
               rel="noopener noreferrer"
               className="text-sm font-medium text-primary-300 hover:text-primary-200 hover:underline"
             >
-              在新窗口打开
+              Don&apos;t want to wait? Open in new window
             </a>
           </div>
         </span>
