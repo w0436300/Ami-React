@@ -90,6 +90,94 @@ function isDirectVideoUrl(href: string): boolean {
   }
 }
 
+/** Video id from embed URL for thumbnail poster */
+function youtubeIdFromEmbed(embed: string): string | null {
+  const m = embed.match(/\/embed\/([\w-]{11})/);
+  return m?.[1] ?? null;
+}
+
+/**
+ * Defer iframe src until near viewport or user clicks — avoids loading every
+ * YouTube player at once (slow). Shows poster + play until then.
+ */
+function LazyYouTubeEmbed({ embedUrl, watchUrl }: { embedUrl: string; watchUrl: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [src, setSrc] = useState<string | null>(null);
+  const videoId = youtubeIdFromEmbed(embedUrl);
+  const posterUrl = videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : null;
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || src) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          // Load player without autoplay — avoids blasting audio when scrolling
+          setSrc(embedUrl);
+          obs.disconnect();
+        }
+      },
+      { rootMargin: '400px 0px', threshold: 0.01 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [embedUrl, src]);
+
+  // Click loads immediately and starts playback
+  const loadPlayer = useCallback(() => {
+    const withAutoplay = `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`;
+    setSrc(withAutoplay);
+  }, [embedUrl]);
+
+  return (
+    <div ref={containerRef} className="relative block aspect-video w-full overflow-hidden bg-slate-900">
+      {src ? (
+        <iframe
+          title="Video"
+          src={src}
+          className="absolute inset-0 h-full w-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+          loading="lazy"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={loadPlayer}
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-900 text-white outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+        >
+          {posterUrl && (
+            <img
+              src={posterUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover opacity-90"
+              loading="lazy"
+              decoding="async"
+            />
+          )}
+          <span className="relative z-10 flex h-14 w-14 items-center justify-center rounded-full bg-red-600 shadow-lg transition-transform hover:scale-105">
+            <svg className="ml-1 h-7 w-7" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </span>
+          <span className="relative z-10 text-xs font-medium text-white/90 drop-shadow">
+            Click to load video
+          </span>
+          <a
+            href={watchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="relative z-10 mt-1 text-[11px] text-white/70 underline hover:text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Open on YouTube instead
+          </a>
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** Markdown components: YouTube links → iframe; direct video URLs → <video> */
 const lessonMarkdownComponents: Components = {
   a({ href, children, ...props }) {
@@ -110,15 +198,7 @@ const lessonMarkdownComponents: Components = {
               </span>
             </div>
           )}
-          <span className="relative block aspect-video w-full bg-black">
-            <iframe
-              title="Video"
-              src={embed}
-              className="absolute inset-0 h-full w-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
-            />
-          </span>
+          <LazyYouTubeEmbed embedUrl={embed} watchUrl={href} />
           <div className="px-3 py-2 border-t border-slate-200 bg-white">
             <a
               href={href}

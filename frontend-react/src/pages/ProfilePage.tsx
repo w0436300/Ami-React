@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button, Toggle } from '@/components/ui';
 import { useAuthContext } from '@/context/AuthContext';
 import { useGoalsContext } from '@/context/GoalsContext';
@@ -86,10 +86,6 @@ export function ProfilePage() {
     earliestGoalTimestampIso(goals as unknown as Array<Record<string, unknown>>);
   const memberSinceDisplay = formatMemberSinceDisplay(memberSinceIso);
 
-  const fslsmDims =
-    (activeGoal?.learner_profile?.learning_preferences
-      ?.fslsm_dimensions as Record<string, number> | undefined) ?? {};
-
   const handleRestartOnboarding = async () => {
     if (!userId) return;
     try {
@@ -118,12 +114,11 @@ export function ProfilePage() {
 
   const behavioralMetrics: any = metrics ?? {};
   const masteryHistory: number[] = behavioralMetrics.mastery_history ?? [];
-  const sessionsCompletedMetric: number | undefined = behavioralMetrics.sessions_completed;
-  const totalSessionsMetric: number | undefined = behavioralMetrics.total_sessions_in_path;
-  const totalStudyTimeSec: number | undefined = behavioralMetrics.total_learning_time_sec;
-  const latestMasteryRate: number | undefined = behavioralMetrics.latest_mastery_rate;
-  const motivationalTriggers: number | undefined =
-    behavioralMetrics.motivational_triggers_count;
+  void behavioralMetrics.sessions_completed;
+  void behavioralMetrics.total_sessions_in_path;
+  void behavioralMetrics.total_learning_time_sec;
+  void behavioralMetrics.latest_mastery_rate;
+  void behavioralMetrics.motivational_triggers_count;
 
   let streakDays = 0;
   for (let i = masteryHistory.length - 1; i >= 0; i -= 1) {
@@ -133,8 +128,8 @@ export function ProfilePage() {
 
   const masteryThreshold =
     (config?.mastery_threshold_default as number | undefined) ?? 0.6;
-  const quizzesPassed = masteryHistory.filter((v) => v >= masteryThreshold).length;
-  const quizzesTotal = masteryHistory.length;
+  void masteryHistory.filter((v) => v >= masteryThreshold).length;
+  void masteryHistory.length;
 
   const biasInfo = activeGoal?.profile_fairness as Record<string, unknown> | undefined;
 

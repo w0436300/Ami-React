@@ -108,9 +108,13 @@ export function LearningPathPage() {
       new_learner_profile: JSON.stringify(activeGoal.learner_profile ?? {}),
     })
       .then(async (result) => {
-        if (result.adaptation?.status === 'applied' && result.learning_path) {
+        const r = result as typeof result & {
+          adaptation?: { status?: string };
+          learning_path?: unknown;
+        };
+        if (r.adaptation?.status === 'applied' && r.learning_path) {
           const updatedGoal = await patchGoalApi(userId, activeGoal.id, {
-            learning_path: result.learning_path,
+            learning_path: r.learning_path,
           });
           updateGoal(activeGoal.id, updatedGoal);
           void refetchRuntime();

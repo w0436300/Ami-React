@@ -439,16 +439,10 @@ export function SkillGapPage() {
   const identifiedCount = localSkills.length;
 
   const goalAssessment = (identifyResponse?.goal_assessment as Record<string, unknown> | undefined) ?? null;
-  const autoRefined = goalAssessment?.auto_refined === true;
   const refinedGoal = (goalAssessment?.refined_goal as string | undefined) ?? state?.goal ?? '';
-  const isVague = (goalAssessment?.is_vague ?? (goalAssessment as any)?.vague) === true;
-  const allMastered = (goalAssessment?.all_mastered ?? (goalAssessment as any)?.allMastered) === true;
   const retrievedSources = (identifyResponse?.retrieved_sources as unknown[] | undefined) ?? [];
-  const biasWarnings =
-    (biasAudit?.warnings as string[] | undefined) ??
-    (biasAudit?.bias_flags as string[] | undefined) ??
-    [];
-  const ethicalDisclaimer = (biasAudit?.ethical_disclaimer as string | undefined) ?? '';
+  void goalAssessment?.auto_refined;
+  void biasAudit;
 
   const handleSchedule = useCallback(async () => {
     if (!userId || !state) return;
