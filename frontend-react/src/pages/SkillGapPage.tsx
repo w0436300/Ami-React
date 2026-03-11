@@ -117,7 +117,7 @@ function LevelTrackRow({
 
   return (
     <div className="min-w-0">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{rowLabel}</p>
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-600">{rowLabel}</p>
       <div className="relative">
         {/* Track background — click row still uses label buttons below */}
         <div className="h-2 w-full rounded-full bg-slate-100" />
@@ -179,7 +179,7 @@ function LevelTrackRow({
                 'rounded-md px-0.5 py-1 text-[10px] leading-tight transition-colors',
                 'hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400',
                 disabled && 'cursor-not-allowed opacity-50',
-                isSelected ? 'font-semibold text-primary-800' : 'text-slate-400 hover:text-slate-600',
+                isSelected ? 'font-semibold text-primary-800' : 'text-slate-700 hover:text-slate-900',
               )}
             >
               {formatLevelLabel(level)}
@@ -286,40 +286,40 @@ function SkillCard({
             type="button"
             disabled={disabled}
             onClick={() => setExpanded((e) => !e)}
-            className="flex w-full items-center justify-between px-4 py-2.5 text-left text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+            className="flex w-full items-center justify-between px-4 py-2.5 text-left text-xs font-medium text-slate-800 hover:bg-slate-50 disabled:opacity-50"
           >
             <span>{expanded ? 'Collapse' : 'Expand'} details</span>
-            <span className={cn('text-slate-400 transition-transform', expanded && 'rotate-180')}>▾</span>
+            <span className={cn('text-slate-600 transition-transform', expanded && 'rotate-180')}>▾</span>
           </button>
           {expanded && (
             <div className="space-y-4 px-4 pb-4">
               {reason && (
                 <div>
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
                     Assessment
                   </p>
-                  <p className="text-sm leading-relaxed text-slate-600">{reason}</p>
+                  <p className="text-sm leading-relaxed text-slate-800">{reason}</p>
                 </div>
               )}
               {currentDescription && (
                 <div>
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
                     Current level
                   </p>
-                  <p className="text-sm leading-relaxed text-slate-600">{currentDescription}</p>
+                  <p className="text-sm leading-relaxed text-slate-800">{currentDescription}</p>
                 </div>
               )}
               {suggestedPath && (
                 <div>
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600">
                     Suggested growth path
                   </p>
-                  <p className="text-sm leading-relaxed text-slate-600">{suggestedPath}</p>
+                  <p className="text-sm leading-relaxed text-slate-800">{suggestedPath}</p>
                 </div>
               )}
               {levelConfidence && (
-                <p className="text-[11px] text-slate-500">
-                  <span className="font-medium text-slate-600">Confidence:</span> {levelConfidence}
+                <p className="text-[11px] text-slate-700">
+                  <span className="font-medium text-slate-800">Confidence:</span> {levelConfidence}
                 </p>
               )}
             </div>
@@ -556,7 +556,7 @@ export function SkillGapPage() {
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl space-y-6 pb-28">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-slate-800">
           Based on your goal, we've identified the key skills required and estimated your current level. Review each
           skill below — toggle off any you want to exclude, or adjust if the AI assessment seems off.
         </p>
@@ -564,7 +564,7 @@ export function SkillGapPage() {
 
       <div className="space-y-1">
         <p className="text-sm font-medium text-slate-800">Select the skills you want included in your learning plan.</p>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm font-medium text-slate-700">
           {identifiedCount} identified • {selectedCount} selected
         </p>
       </div>
@@ -586,10 +586,10 @@ export function SkillGapPage() {
 
       {retrievedSources.length > 0 && (
         <details className="text-sm border border-slate-200 rounded-lg">
-          <summary className="px-4 py-3 cursor-pointer text-slate-600 font-medium select-none">
+          <summary className="px-4 py-3 cursor-pointer text-slate-800 font-medium select-none">
             Retrieved sources ({retrievedSources.length})
           </summary>
-          <ul className="px-4 pb-4 pt-1 space-y-1 text-xs text-slate-500 list-disc list-inside">
+          <ul className="px-4 pb-4 pt-1 space-y-1 text-xs text-slate-700 list-disc list-inside">
             {retrievedSources.slice(0, 5).map((src, i) => (
               <li key={i}>{typeof src === 'string' ? src : JSON.stringify(src)}</li>
             ))}
@@ -605,7 +605,7 @@ export function SkillGapPage() {
         <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <p className="text-sm font-medium text-slate-800">{selectedCount} skill{selectedCount !== 1 ? 's' : ''} selected</p>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-700">
               {hasGaps
                 ? 'Your selected skills will shape the difficulty and focus of the learning path.'
                 : 'Select at least one skill with a target level above the current level to continue.'}
