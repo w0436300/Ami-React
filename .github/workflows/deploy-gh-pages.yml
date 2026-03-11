@@ -6,6 +6,9 @@
 name: Deploy to GitHub Pages
 
 on:
+  push:
+    branches:
+      - React-Frontend-Rebuild
   workflow_dispatch:
 
 permissions:

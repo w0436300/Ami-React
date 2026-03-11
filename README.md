@@ -205,7 +205,8 @@ BACKEND_PORT=8000 ./scripts/start_all.sh
 Ami/
   backend/          # FastAPI backend, modules, configs, tests, evals, docker files; runtime data in backend/data/
   frontend/         # Streamlit frontend, pages/components/utils, tests, docker files
-  frontend-react/   # React SPA (Beta release, in active development)
+  frontend-react/      # React SPA (current)
+  frontend-react-old/  # Legacy React app (renamed from frontend-react-beta)
   docs/             # design notes, migration docs, testing guides
   scripts/          # local dev startup/stop scripts
   assets/        # architecture diagrams and Beta screenshots

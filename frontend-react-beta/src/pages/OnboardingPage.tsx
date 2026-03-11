@@ -77,7 +77,8 @@ export function OnboardingPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [learningGoal, setLearningGoal] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedPreferenceId, setSelectedPreferenceId] = useState<string | null>(null);
+  /** Default persona when user does not choose — balanced for faster course load than visual */
+  const [selectedPreferenceId, setSelectedPreferenceId] = useState<string | null>('balanced');
   const [resumeText, setResumeText] = useState('');
   const personas = personasData?.personas ?? {};
 
@@ -114,10 +115,10 @@ export function OnboardingPage() {
   const handleBeginLearning = useCallback(() => {
     const trimmed = learningGoal.trim();
     if (!trimmed) return;
-    const personaKey = selectedPreferenceId;
+    const personaKey = selectedPreferenceId ?? 'visual';
     // Build learnerInformation similar to old frontend: persona + optional resume summary
     let learnerInformation = resumeText;
-    if (personaKey && personas[personaKey]) {
+    if (personas[personaKey]) {
       const dims = personas[personaKey].fslsm_dimensions;
       const dimStr = Object.entries(dims)
         .map(([k, v]) => `${k}=${v}`)
@@ -230,7 +231,7 @@ export function OnboardingPage() {
               })}
             </div>
 
-            {/* Selected preference detail card: hidden until a style is chosen */}
+            {/* Selected preference detail card (defaults to Balanced — faster course load than visual) */}
             {selectedPreferenceId && (() => {
               const selected =
                 LEARNING_PREFERENCES.find((p) => p.id === selectedPreferenceId) ?? LEARNING_PREFERENCES[0];

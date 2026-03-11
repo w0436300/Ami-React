@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button, Toggle } from '@/components/ui';
 import { cn } from '@/lib/cn';
@@ -98,6 +99,99 @@ function formatLevelLabel(level: string) {
   return level.charAt(0).toUpperCase() + level.slice(1);
 }
 
+/** Match backend/config level string to levels[] entry so indexOf/gapLv work after adjust */
+function normalizeLevel(level: string | undefined, levels: string[]): string {
+  if (!level || !levels.length) return level ?? '';
+  const lower = String(level).toLowerCase();
+  const found = levels.find((x) => String(x).toLowerCase() === lower);
+  return found ?? level;
+}
+
+/**
+ * Backend + config may disagree on level strings; indexOf alone gives -1 and breaks bars/gap.
+ * Fixed order matches backend LevelCurrent/LevelRequired.
+ */
+const LEVEL_ORDER: Record<string, number> = {
+  unlearned: 0,
+  beginner: 1,
+  intermediate: 2,
+  advanced: 3,
+  expert: 4,
+};
+
+function levelIndex(level: string | undefined, levels: string[]): number {
+  if (!level) return 0;
+  const normalized = normalizeLevel(level, levels);
+  const i = levels.indexOf(normalized);
+  if (i >= 0) return i;
+  const key = String(level).toLowerCase();
+  if (key in LEVEL_ORDER) return LEVEL_ORDER[key];
+  return 0;
+}
+
+const SKILLGAP_STORAGE_KEY = 'ami_skillgap_adjusted_v1';
+
+function skillGapStorageKey(goal: string, learnerInformation: string): string {
+  const slice = `${goal}\n${learnerInformation}`.slice(0, 500);
+  let h = 0;
+  for (let i = 0; i < slice.length; i++) h = (h * 31 + slice.charCodeAt(i)) | 0;
+  return `${SKILLGAP_STORAGE_KEY}_${h}`;
+}
+
+/** Backend LevelRequired has no unlearned — target track must not offer it */
+function levelsWithoutUnlearned(levels: string[]): string[] {
+  const filtered = levels.filter((l) => String(l).toLowerCase() !== 'unlearned');
+  return filtered.length > 0 ? filtered : levels;
+}
+
+type SavedSkill = {
+  name?: string;
+  current_level: string;
+  required_level: string;
+  addToPlan?: boolean;
+};
+
+/** Apply sessionStorage skills by name first; index only when name matches or single fallback */
+function applySavedSkillsToMapped(
+  mapped: LocalSkill[],
+  savedSkills: SavedSkill[],
+  levels: string[],
+): void {
+  const byName = new Map<string, SavedSkill>();
+  for (const s of savedSkills) {
+    const k = (s.name ?? '').toString().toLowerCase().trim();
+    if (k) byName.set(k, s);
+  }
+  for (let i = 0; i < mapped.length; i++) {
+    const m = mapped[i];
+    const nameKey = (m.original.skill_name || m.original.name || '').toString().toLowerCase().trim();
+    let toApply = nameKey ? byName.get(nameKey) : undefined;
+    /* Index fallback only when names align or both unnamed */
+    if (!toApply && savedSkills[i]) {
+      const sn = (savedSkills[i].name ?? '').toString().toLowerCase().trim();
+      if (!sn || sn === nameKey) toApply = savedSkills[i];
+    }
+    if (!toApply) continue;
+    if (toApply.current_level)
+      m.current_level = normalizeLevel(toApply.current_level, levels);
+    if (toApply.required_level) {
+      let req = normalizeLevel(toApply.required_level, levels);
+      if (String(req).toLowerCase() === 'unlearned')
+        req = levelsWithoutUnlearned(levels)[0] ?? req;
+      m.required_level = req;
+    }
+    if (typeof toApply.addToPlan === 'boolean') m.addToPlan = toApply.addToPlan;
+    const cur = levelIndex(m.current_level, levels);
+    const tgt = levelIndex(m.required_level, levels);
+    m.original = {
+      ...m.original,
+      current_level: m.current_level,
+      required_level: m.required_level,
+      is_gap: tgt > cur,
+    };
+  }
+}
+
 /** Horizontal level track: click stage to select (no dropdown) */
 function LevelTrackRow({
   rowLabel,
@@ -105,25 +199,61 @@ function LevelTrackRow({
   levels,
   onChange,
   disabled,
+  variant = 'current',
 }: {
   rowLabel: string;
   value: string;
   levels: string[];
   onChange: (next: string) => void;
   disabled?: boolean;
+  /** target = destination level (cool/teal); current = where learner is (warm/amber) */
+  variant?: 'target' | 'current';
 }) {
-  const selectedIdx = Math.max(0, levels.indexOf(value));
+  const selectedIdx = levelIndex(value, levels);
   const n = levels.length;
-  const fillPct = n > 1 ? (selectedIdx / (n - 1)) * 100 : 0;
+  const maxIdx = Math.max(n - 1, 1);
+  const fillPct = maxIdx > 0 ? (selectedIdx / maxIdx) * 100 : 0;
+
+  const isTarget = variant === 'target';
+  /*
+   * Minimal distinction: same neutral shell, different accent only.
+   * Target = cool slate (destination); Current = primary (where you are).
+   */
+  /* Track #D7E3E8; current row fill #1FA89A (target row stays slate for distinction) */
+  const styles = isTarget
+    ? {
+        label: 'text-[#7E92A3]',
+        accentBar: 'bg-[#5F7486]',
+        fill: 'bg-[#5F7486]',
+        selectedDot: 'bg-[#16324A]',
+        pastDotLg: 'bg-[#5F7486]',
+        pastDotSm: 'bg-[#7E92A3]',
+        labelSelected: 'text-[#16324A]',
+        focusRing: 'focus-visible:ring-[#8FC7D1]',
+      }
+    : {
+        label: 'text-[#7E92A3]',
+        accentBar: 'bg-[#1FA89A]',
+        fill: 'bg-[#1FA89A]',
+        selectedDot: 'bg-[#148A7D]',
+        pastDotLg: 'bg-[#1FA89A]',
+        pastDotSm: 'bg-[#4AB9AD]',
+        labelSelected: 'text-[#16324A]',
+        focusRing: 'focus-visible:ring-[#8FC7D1]',
+      };
 
   return (
     <div className="min-w-0">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[#5F6B7A]">{rowLabel}</p>
+      <div className="mb-2 flex items-center gap-2">
+        <span className={cn('h-1 w-1 rounded-full shrink-0', styles.accentBar)} aria-hidden />
+        <p className={cn('text-[10px] font-semibold uppercase tracking-wider', styles.label)}>
+          {rowLabel}
+        </p>
+      </div>
       <div className="relative">
-        {/* Track background — click row still uses label buttons below */}
-        <div className="h-2 w-full rounded-full bg-[#E8EEF3]" />
+        <div className="h-2 w-full rounded-full bg-[#D7E3E8]" />
         <div
-          className="absolute left-0 top-0 h-2 rounded-full bg-[#8EA4BE] transition-[width] duration-200"
+          className={cn('absolute left-0 top-0 h-2 rounded-full transition-[width] duration-200', styles.fill)}
           style={{ width: `${fillPct}%`, minWidth: selectedIdx === 0 ? 12 : undefined }}
         />
         <div className="absolute inset-0 flex">
@@ -140,24 +270,27 @@ function LevelTrackRow({
                 aria-pressed={isSelected}
                 onClick={() => onChange(level)}
                 className={cn(
-                  'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full p-1.5 outline-none transition-transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-primary-400 disabled:pointer-events-none disabled:opacity-50',
+                  'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full p-1.5 outline-none transition-transform hover:scale-110 focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50',
+                  styles.focusRing,
                 )}
                 style={{ left: `${leftPct}%` }}
               >
                 {isSelected ? (
-                  <div className="h-2.5 w-2.5 rounded-sm bg-primary-600 shadow-sm ring-2 ring-white" />
+                  <div
+                    className={cn('h-2.5 w-2.5 rounded-sm shadow-sm ring-2 ring-white', styles.selectedDot)}
+                  />
                 ) : idx === 0 ? (
                   <div
                     className={cn(
                       'h-2 w-2 rounded-full ring-2 ring-white',
-                      isPast ? 'bg-primary-500' : 'bg-slate-300',
+                      isPast ? styles.pastDotLg : 'bg-slate-300',
                     )}
                   />
                 ) : (
                   <div
                     className={cn(
                       'h-1.5 w-1.5 rounded-full ring-2 ring-white',
-                      isPast ? 'bg-primary-300' : 'bg-slate-300',
+                      isPast ? styles.pastDotSm : 'bg-slate-300',
                     )}
                   />
                 )}
@@ -166,8 +299,10 @@ function LevelTrackRow({
           })}
         </div>
       </div>
-      {/* Labels — primary click target to pick level */}
-      <div className="mt-2 grid grid-cols-5 gap-0.5 text-center">
+      <div
+        className="mt-2 grid gap-0.5 text-center"
+        style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}
+      >
         {levels.map((level, idx) => {
           const isSelected = idx === selectedIdx;
           return (
@@ -178,9 +313,12 @@ function LevelTrackRow({
               onClick={() => onChange(level)}
               className={cn(
                 'rounded-md px-0.5 py-1 text-[10px] leading-tight transition-colors',
-                'hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-400',
+                'hover:bg-[#F7FBFC] focus-visible:outline-none focus-visible:ring-2',
+                styles.focusRing,
                 disabled && 'cursor-not-allowed opacity-50',
-                isSelected ? 'font-semibold text-primary-800' : 'text-slate-700 hover:text-slate-900',
+                isSelected
+                  ? cn('font-semibold', styles.labelSelected)
+                  : 'text-[#5F7486] hover:text-[#16324A]',
               )}
             >
               {formatLevelLabel(level)}
@@ -241,37 +379,39 @@ function SkillCard({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-[#DCE7EE] bg-[#FCFDFE] shadow-[0_1px_3px_rgba(20,32,51,0.06)]">
+    <div className="overflow-hidden rounded-2xl border border-[#DCE7EA] bg-white shadow-[0_1px_3px_rgba(22,50,74,0.06)]">
       {/* Header: numbered title + Mark as Gap */}
       <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#DCE7EE] bg-[#FCFDFE] text-sm font-semibold text-[#5F6B7A]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#DCE7EA] bg-white text-sm font-semibold text-[#7E92A3]"
             aria-hidden
           >
             {index + 1}
           </span>
-          <h3 className="truncate text-base font-semibold text-[#142033]">{title}</h3>
+          <h3 className="truncate text-base font-semibold text-[#16324A]">{title}</h3>
         </div>
         <Toggle
           label="Mark as Gap"
           checked={skill.addToPlan}
           onChange={() => onToggle()}
           disabled={disabled}
-          className="shrink-0 [&_span]:text-xs [&_span]:text-[#5F6B7A]"
+          className="shrink-0 [&_span]:text-xs [&_span]:text-[#5F7486]"
         />
       </div>
 
-      {/* TARGET + CURRENT tracks */}
-      <div className="space-y-5 px-4 pb-3">
+      {/* TARGET + CURRENT tracks — target excludes unlearned (backend LevelRequired) */}
+      <div className="space-y-6 border-t border-slate-100 px-4 pb-4 pt-4">
         <LevelTrackRow
+          variant="target"
           rowLabel="Target level"
           value={skill.required_level}
-          levels={levels}
+          levels={levelsWithoutUnlearned(levels)}
           onChange={onTargetChange}
           disabled={disabled}
         />
         <LevelTrackRow
+          variant="current"
           rowLabel="Current level"
           value={skill.current_level}
           levels={levels}
@@ -296,31 +436,31 @@ function SkillCard({
             <div className="space-y-4 px-4 pb-4">
               {reason && (
                 <div>
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5F6B7A]">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#7E92A3]">
                     Assessment
                   </p>
-                  <p className="text-sm leading-relaxed text-[#2E3A49]">{reason}</p>
+                  <p className="text-sm leading-relaxed text-[#16324A]">{reason}</p>
                 </div>
               )}
               {currentDescription && (
                 <div>
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5F6B7A]">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#7E92A3]">
                     Current level
                   </p>
-                  <p className="text-sm leading-relaxed text-[#2E3A49]">{currentDescription}</p>
+                  <p className="text-sm leading-relaxed text-[#16324A]">{currentDescription}</p>
                 </div>
               )}
               {suggestedPath && (
                 <div>
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#5F6B7A]">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-[#7E92A3]">
                     Suggested growth path
                   </p>
-                  <p className="text-sm leading-relaxed text-[#2E3A49]">{suggestedPath}</p>
+                  <p className="text-sm leading-relaxed text-[#16324A]">{suggestedPath}</p>
                 </div>
               )}
               {levelConfidence && (
-                <p className="text-[11px] text-[#5F6B7A]">
-                  <span className="font-medium text-[#2E3A49]">Confidence:</span> {levelConfidence}
+                <p className="text-[11px] text-[#5F7486]">
+                  <span className="font-medium text-[#16324A]">Confidence:</span> {levelConfidence}
                 </p>
               )}
             </div>
@@ -367,6 +507,20 @@ export function SkillGapPage() {
   const hasFiredRef = useRef(false);
   /** Snapshot when entering adjust mode — Cancel restores this */
   const adjustSnapshotRef = useRef<LocalSkill[] | null>(null);
+  /** Always holds latest localSkills so saveAdjust reads edits made in adjust UI (avoids stale prev) */
+  const localSkillsRef = useRef<LocalSkill[]>([]);
+  useEffect(() => {
+    localSkillsRef.current = localSkills;
+  }, [localSkills]);
+  /** Bump to force overview remount after save so list/aside always reflect adjusted levels */
+  const [overviewEpoch, setOverviewEpoch] = useState(0);
+  /** Overview list selection — hooks must run before any early return */
+  const [selectedSkillIdx, setSelectedSkillIdx] = useState(0);
+  useEffect(() => {
+    if (localSkills.length > 0 && selectedSkillIdx >= localSkills.length) {
+      setSelectedSkillIdx(0);
+    }
+  }, [localSkills.length, selectedSkillIdx]);
 
   const enterAdjustMode = useCallback(() => {
     adjustSnapshotRef.current = structuredClone(localSkills) as LocalSkill[];
@@ -382,9 +536,62 @@ export function SkillGapPage() {
   }, []);
 
   const saveAdjustAndReturn = useCallback(() => {
+    const snapshot = localSkillsRef.current;
+    if (!snapshot.length) {
+      adjustSnapshotRef.current = null;
+      setAdjustMode(false);
+      return;
+    }
+    const targetLevels = levelsWithoutUnlearned(levels);
+
+    const next: LocalSkill[] = snapshot.map((s) => {
+      const current_level = normalizeLevel(s.current_level, levels);
+      let required_level = normalizeLevel(s.required_level, levels);
+      if (String(required_level).toLowerCase() === 'unlearned')
+        required_level = normalizeLevel(targetLevels[0] ?? s.required_level, levels);
+      const cur = levelIndex(current_level, levels);
+      const tgt = levelIndex(required_level, levels);
+      const isGap = tgt > cur;
+      return {
+        ...s,
+        current_level,
+        required_level,
+        original: {
+          ...s.original,
+          current_level,
+          required_level,
+          is_gap: isGap,
+        },
+      };
+    });
+    /* Synchronous commit so overview branch reads updated localSkills on same paint */
+    flushSync(() => {
+      setLocalSkills(next);
+      setOverviewEpoch((e) => e + 1);
+    });
+    /* Persist so remount/re-enter doesn’t overwrite bars with stale API-only data */
+    try {
+      if (state?.goal && state?.learnerInformation) {
+        const key = skillGapStorageKey(state.goal, state.learnerInformation);
+        sessionStorage.setItem(
+          key,
+          JSON.stringify({
+            goal: state.goal,
+            skills: next.map((s) => ({
+              name: s.original.skill_name || s.original.name,
+              current_level: s.current_level,
+              required_level: s.required_level,
+              addToPlan: s.addToPlan,
+            })),
+          }),
+        );
+      }
+    } catch {
+      // ignore quota / private mode
+    }
     adjustSnapshotRef.current = null;
     setAdjustMode(false);
-  }, []);
+  }, [levels, state?.goal, state?.learnerInformation]);
 
   useEffect(() => {
     // Wait for config so we use the correct level labels (backend uses lowercase like "unlearned")
@@ -417,14 +624,38 @@ export function SkillGapPage() {
           skill_name: (sg.skill_name ?? sg.name ?? '').toString(),
         }));
 
-        setLocalSkills(
-          normalizedGaps.map((sg) => ({
+        const targetLevels = levelsWithoutUnlearned(levels);
+        const defaultRequired = targetLevels[0] ?? levels[1] ?? levels[0];
+
+        const mapped = normalizedGaps.map((sg) => {
+          let required_level = normalizeLevel(sg.required_level ?? defaultRequired, levels);
+          if (String(required_level).toLowerCase() === 'unlearned')
+            required_level = normalizeLevel(defaultRequired, levels);
+          return {
             original: sg,
-            current_level: sg.current_level ?? levels[0],
-            required_level: sg.required_level ?? (levels[1] ?? levels[0]),
+            current_level: normalizeLevel(sg.current_level ?? levels[0], levels),
+            required_level,
             addToPlan: sg.is_gap !== false,
-          })),
-        );
+          };
+        });
+
+        /* Re-apply saved adjust by skill name (order-safe) */
+        try {
+          if (state?.goal && state?.learnerInformation) {
+            const key = skillGapStorageKey(state.goal, state.learnerInformation);
+            const raw = sessionStorage.getItem(key);
+            if (raw) {
+              const parsed = JSON.parse(raw) as { goal?: string; skills?: SavedSkill[] };
+              if (parsed.goal === state.goal && Array.isArray(parsed.skills)) {
+                applySavedSkillsToMapped(mapped, parsed.skills, levels);
+              }
+            }
+          }
+        } catch {
+          // ignore bad JSON
+        }
+
+        setLocalSkills(mapped);
 
         try {
           const biasData = (await auditSkillGapBiasApi({
@@ -449,16 +680,35 @@ export function SkillGapPage() {
     setLocalSkills((prev) => prev.map((s, i) => (i === idx ? { ...s, addToPlan: !s.addToPlan } : s)));
   }, []);
 
-  const handleTargetChange = useCallback((idx: number, level: string) => {
-    setLocalSkills((prev) => prev.map((s, i) => (i === idx ? { ...s, required_level: level } : s)));
-  }, []);
+  const handleTargetChange = useCallback(
+    (idx: number, level: string) => {
+      const targetLevels = levelsWithoutUnlearned(levels);
+      const normalized =
+        String(level).toLowerCase() === 'unlearned'
+          ? normalizeLevel(targetLevels[0] ?? level, levels)
+          : normalizeLevel(level, levels);
+      setLocalSkills((prev) =>
+        prev.map((s, i) => (i === idx ? { ...s, required_level: normalized } : s)),
+      );
+    },
+    [levels],
+  );
 
-  const handleCurrentChange = useCallback((idx: number, level: string) => {
-    setLocalSkills((prev) => prev.map((s, i) => (i === idx ? { ...s, current_level: level } : s)));
-  }, []);
+  const handleCurrentChange = useCallback(
+    (idx: number, level: string) => {
+      setLocalSkills((prev) =>
+        prev.map((s, i) =>
+          i === idx ? { ...s, current_level: normalizeLevel(level, levels) } : s,
+        ),
+      );
+    },
+    [levels],
+  );
 
   const plannedSkills = localSkills.filter((s) => s.addToPlan);
-  const hasGaps = plannedSkills.some((s) => levels.indexOf(s.required_level) > levels.indexOf(s.current_level));
+  const hasGaps = plannedSkills.some(
+    (s) => levelIndex(s.required_level, levels) > levelIndex(s.current_level, levels),
+  );
   const selectedCount = plannedSkills.length;
   const identifiedCount = localSkills.length;
 
@@ -518,6 +768,14 @@ export function SkillGapPage() {
 
       refreshGoals();
       setSelectedGoalId(newGoal.id);
+      /* Clear draft adjust so next visit gets fresh API state unless user adjusts again */
+      try {
+        if (state.goal && state.learnerInformation) {
+          sessionStorage.removeItem(skillGapStorageKey(state.goal, state.learnerInformation));
+        }
+      } catch {
+        // ignore
+      }
       navigate('/learning-path');
     } catch {
       setError('Failed to create your learning path. Please try again.');
@@ -578,117 +836,230 @@ export function SkillGapPage() {
 
   /* ---------- Default overview: summary cards + CTA; link opens detailed adjust UI ---------- */
   const gapLv = (s: LocalSkill) => {
-    const cur = levels.indexOf(s.current_level);
-    const tgt = levels.indexOf(s.required_level);
-    if (cur < 0 || tgt < 0) return 0;
+    const cur = levelIndex(s.current_level, levels);
+    const tgt = levelIndex(s.required_level, levels);
     return Math.max(0, tgt - cur);
   };
   const priorityGapCount = localSkills.filter((s) => gapLv(s) >= 1).length;
 
   if (!adjustMode && localSkills.length > 0) {
+    const selected = localSkills[selectedSkillIdx] ?? localSkills[0];
+    const selectedName =
+      selected.original.skill_name || selected.original.name || `Skill ${selectedSkillIdx + 1}`;
+    const reason = stringFromBackend(selected.original.reason);
+    const levelConfidence = stringFromBackend(selected.original.level_confidence);
+    const suggestedPath = stringFromBackend(
+      (selected.original as Record<string, unknown>).suggested_growth_path,
+    );
+    /*
+     * Focus areas list only when backend sends suggested_growth_path (multi-part).
+     * Do not split reason into bullets — same text is already shown above as paragraph;
+     * splitting duplicated the assessment (e.g. one sentence as <p> and again as <li>).
+     */
+    const bullets: string[] = suggestedPath
+      ? suggestedPath
+          .split(/\n|;|；/)
+          .map((s) => s.trim())
+          .filter(Boolean)
+          /* Drop any bullet that is the same as reason (no duplicate) */
+          .filter((b) => {
+            if (!reason) return true;
+            const r = reason.replace(/\s+/g, ' ').trim().toLowerCase();
+            const bb = b.replace(/\s+/g, ' ').trim().toLowerCase();
+            if (bb === r || r === bb) return false;
+            if (r.length > 20 && bb.length > 20 && (r.includes(bb) || bb.includes(r))) return false;
+            return true;
+          })
+      : [];
+
+    const confidenceLabel =
+      levelConfidence === 'high'
+        ? 'High'
+        : levelConfidence === 'medium'
+          ? 'Med'
+          : levelConfidence === 'low'
+            ? 'Low'
+            : levelConfidence || '—';
+
     return (
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pb-10">
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-          <div className="min-w-0 flex-1 space-y-6">
-            <header className="flex gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
-                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-[#142033] sm:text-2xl">Your skill blueprint is ready</h1>
-                <p className="mt-1 text-sm text-[#667085]">
-                  {localSkills.length} core competencies identified, including {priorityGapCount} priority gap
-                  {priorityGapCount !== 1 ? 's' : ''} to address first.
-                </p>
-              </div>
+      <div
+        key={overviewEpoch}
+        className="mx-auto w-full max-w-7xl bg-[#F6FAFB] px-4 py-6 sm:px-6 lg:px-8 lg:pb-10"
+      >
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+          {/* ---------- Left: skill gap analysis list ---------- */}
+          <div className="min-w-0 flex-1">
+            <header className="mb-4">
+              <h1 className="text-xl font-bold text-[#16324A] sm:text-2xl">Skill gap analysis</h1>
+              <p className="mt-1 text-sm text-[#5F7486]">
+                Click any skill to view details and learning suggestions.
+              </p>
+              <p className="mt-2 text-sm font-medium text-[#16324A]">
+                {localSkills.length} core competencies
+                {priorityGapCount > 0 && (
+                  <span className="ml-2 font-normal text-[#5F7486]">
+                    ({priorityGapCount} priority gap{priorityGapCount !== 1 ? 's' : ''} to close first)
+                  </span>
+                )}
+              </p>
             </header>
 
-            <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+            <ul className="min-w-0 space-y-3">
               {localSkills.map((skill, idx) => {
                 const name = skill.original.skill_name || skill.original.name || `Skill ${idx + 1}`;
                 const g = gapLv(skill);
-                const tgtIdx = Math.max(0, levels.indexOf(skill.required_level));
-                const barPctTgt = levels.length > 1 ? (tgtIdx / (levels.length - 1)) * 100 : 100;
-                const tag =
+                const curIdx = levelIndex(skill.current_level, levels);
+                const tgtIdx = levelIndex(skill.required_level, levels);
+                /*
+                 * Fill must change when EITHER current or target changes.
+                 * Absolute curIdx/maxIdx only changes when current moves — adjusting target alone left bar static.
+                 * Use progress toward target: (cur+1)/(tgt+1) in index space so both edits affect width.
+                 */
+                let spanPct = 100;
+                if (curIdx >= tgtIdx) {
+                  spanPct = 100; /* at or past target */
+                } else if (tgtIdx > 0) {
+                  spanPct = Math.round(((curIdx + 1) / (tgtIdx + 1)) * 100);
+                } else {
+                  spanPct = Math.round((curIdx + 1) * 20); /* fallback if tgtIdx 0 */
+                }
+                if (g > 0 && spanPct < 14) spanPct = 14;
+                if (g === 0) spanPct = 100;
+                /* Track #D7E3E8; fill #1FA89A — darker when row selected for focus */
+                const isSelected = idx === selectedSkillIdx;
+                const spanColor =
+                  g === 0
+                    ? 'bg-[#C5EBE5]' /* on target: soft teal tint, distinct from track */
+                    : isSelected
+                      ? 'bg-[#148A7D]' /* selected + has gap: deeper teal */
+                      : 'bg-[#1FA89A]';
+                const chip =
                   g >= 3
-                    ? { text: 'Key breakthrough', className: 'bg-[#142033] text-white' }
+                    ? { text: 'Major gap', className: 'bg-red-50 text-red-700 border border-red-100' }
                     : g === 2
-                      ? { text: 'Steady improvement', className: 'bg-[#E8F6EF] text-[#1F7A52]' }
+                      ? {
+                          text: 'Steady progress',
+                          className:
+                            'bg-[#E8F8F1] text-[#217A57] border border-[#BFE7D3]',
+                        }
                       : g === 1
-                        ? { text: 'Quick remediation', className: 'bg-[#EAF4FB] text-[#2B6F97]' }
-                        : { text: 'Specialized focus', className: 'bg-[#F4F0FF] text-[#5B4B8A]' };
+                        ? {
+                            text: 'Slight gap',
+                            className:
+                              'bg-[#FFF4DB] text-[#9A6B00] border border-[#F3DFB2]',
+                          }
+                        : {
+                            text: 'On target',
+                            className: 'bg-[#E8F7FA] text-[#5F7486] border border-[#D7E3E8]',
+                          };
+                const currentLabel = formatLevelLabel(skill.current_level);
+
                 return (
-                  <div
-                    key={`${name}-${idx}`}
-                    className="min-w-0 rounded-2xl border border-[#DCE7EE] bg-[#FCFDFE] p-4 shadow-[0_1px_3px_rgba(20,32,51,0.06)]"
-                  >
-                    <h3 className="min-w-0 font-semibold leading-snug text-[#142033] break-words">
-                      {name}
-                    </h3>
-                    <div className="mt-3 space-y-2">
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-[#E8EEF3]">
+                  <li key={`${name}-${idx}-${skill.current_level}-${skill.required_level}-${skill.addToPlan}`}>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSkillIdx(idx)}
+                      className={cn(
+                        'flex w-full flex-col gap-2 rounded-xl border px-4 py-3 text-left transition-colors',
+                        isSelected
+                          ? 'border-[#8FC7D1] bg-[#F7FBFC]'
+                          : 'border-[#DCE7EA] bg-white hover:border-[#B8D4DC] hover:bg-[#F6FAFB]',
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="min-w-0 flex-1 font-semibold text-[#16324A] break-words">{name}</span>
+                        <span
+                          className={cn(
+                            'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium',
+                            chip.className,
+                          )}
+                        >
+                          {chip.text}
+                        </span>
+                      </div>
+                      {/* Span segment: width tied to current+target so adjust updates; key forces DOM refresh */}
+                      <div className="relative h-1.5 w-full overflow-hidden rounded-sm bg-[#D7E3E8]">
                         <div
-                          className="h-full rounded-full bg-[#8EA4BE]"
-                          style={{ width: `${barPctTgt}%` }}
+                          key={`fill-${idx}-${skill.current_level}-${skill.required_level}-${spanPct}`}
+                          className={cn('block h-full min-w-[8px] rounded-sm transition-[width] duration-300', spanColor)}
+                          style={{ width: `${spanPct}%` }}
+                          aria-hidden
                         />
                       </div>
-                      <p className="text-xs text-[#5F6B7A]">
-                        {formatLevelLabel(skill.current_level)} → {formatLevelLabel(skill.required_level)}
-                      </p>
-                      {/* Status pill + GAP on one row, left–right aligned */}
-                      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 pt-0.5">
-                        <span
-                          className={`inline-flex w-fit max-w-full shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium leading-tight whitespace-normal ${tag.className}`}
-                        >
-                          {tag.text}
+                      <div className="flex items-center justify-between gap-2 text-xs text-[#5F7486]">
+                        <span>Current: {currentLabel}</span>
+                        {g > 0 && <span className="tabular-nums">Gap: {g} lvl</span>}
+                        <span className={cn('shrink-0 transition-transform', isSelected && 'rotate-90')}>
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
                         </span>
-                        {g > 0 && (
-                          <p className="shrink-0 text-xs font-semibold text-[#2E3A49]">GAP: {g} LV</p>
-                        )}
                       </div>
-                    </div>
-                  </div>
+                    </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           </div>
 
-          <aside className="w-full shrink-0 rounded-2xl border border-[#DCE7EE] bg-[#FCFDFE] p-6 shadow-[0_1px_3px_rgba(20,32,51,0.06)] lg:sticky lg:top-24 lg:w-[320px]">
-            <div className="mb-4 flex justify-center text-[#142033]">
-              <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          {/* ---------- Right: detail + CTA (reason / suggestedPath / level_confidence from API) ---------- */}
+          <aside className="w-full shrink-0 rounded-2xl border border-[#DCE7EA] bg-white p-6 shadow-[0_1px_3px_rgba(22,50,74,0.06)] lg:sticky lg:top-24 lg:max-w-[380px] lg:flex-1">
+            <div className="mb-3 flex items-center gap-2 text-sm font-medium text-[#3AA6B9]">
+              <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
+              Next step
             </div>
-            <h2 className="text-center text-lg font-bold text-[#142033]">Generate learning path</h2>
-            <p className="mt-2 text-center text-sm text-[#667085]">
-              AI will match optimal teaching resources from this blueprint.
-            </p>
+            <h2 className="text-lg font-bold text-[#16324A]">
+              {selectedName}
+              <span className="block text-sm font-normal text-[#5F7486]">
+                Current {formatLevelLabel(selected.current_level)} → Target {formatLevelLabel(selected.required_level)}
+              </span>
+            </h2>
+            {reason && (
+              <p className="mt-3 text-sm leading-relaxed text-[#16324A]">{reason}</p>
+            )}
+            {/* No session hours/weeks from API until path exists — show gap + confidence only */}
+            <div className="mt-5 grid grid-cols-3 gap-2 border-y border-[#D7E3E8] py-4 text-center">
+              <div>
+                <p className="text-lg font-bold tabular-nums text-[#16324A]">{gapLv(selected) || '—'}</p>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-[#7E92A3]">Level gap</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-[#16324A]">{confidenceLabel}</p>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-[#7E92A3]">Confidence</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-[#16324A]">{selected.addToPlan ? 'Yes' : 'No'}</p>
+                <p className="text-[10px] font-medium uppercase tracking-wider text-[#7E92A3]">In plan</p>
+              </div>
+            </div>
+            {bullets.length > 0 && (
+              <div className="mt-4">
+                <p className="mb-2 text-xs font-semibold text-[#16324A]">Focus areas (from analysis)</p>
+                <ul className="list-inside list-disc space-y-1 text-sm text-[#5F7486]">
+                  {bullets.slice(0, 6).map((b, i) => (
+                    <li key={i}>{b}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <Button
               size="lg"
-              className="mt-6 w-full justify-center gap-2"
+              className="mt-6 w-full justify-center gap-2 bg-[#63B3C1] text-white hover:bg-[#529EAC] active:bg-[#4A8F9C] focus-visible:ring-[#3AA6B9]"
               onClick={handleSchedule}
               loading={isScheduling}
               disabled={plannedSkills.length === 0 || !hasGaps || isScheduling}
             >
-              {isScheduling ? 'Creating…' : 'Generate Learning Path'}
-              {!isScheduling && (
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              )}
+              {isScheduling ? 'Creating…' : 'Generate learning path'}
             </Button>
             <button
               type="button"
-              className="mt-4 w-full text-center text-sm text-[#5F6B7A] underline decoration-[#DCE7EE] underline-offset-2 hover:text-[#142033]"
+              className="mt-4 w-full text-center text-sm text-[#5F7486] underline decoration-[#DCE7EA] underline-offset-2 hover:text-[#3AA6B9]"
               onClick={enterAdjustMode}
             >
-              Adjust start and target levels
+              Adjust levels manually
             </button>
-            <p className="mt-2 text-center text-xs text-[#5F6B7A]">
-              Open the detailed view to adjust levels and which skills are included in your plan.
-            </p>
           </aside>
         </div>
       </div>
@@ -696,19 +1067,19 @@ export function SkillGapPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full max-w-7xl bg-[#F6FAFB] px-4 py-6 sm:px-6 lg:px-8">
       <div className="max-w-5xl space-y-6 pb-28">
       <button
         type="button"
-        className="text-sm font-medium text-[#5F6B7A] underline decoration-[#DCE7EE] underline-offset-2 hover:text-[#142033]"
+        className="text-sm font-medium text-[#5F7486] underline decoration-[#DCE7EA] underline-offset-2 hover:text-[#3AA6B9]"
         onClick={saveAdjustAndReturn}
       >
-        ← Back to blueprint overview
+        ← Back to Skill gap analysis
       </button>
 
       <div className="space-y-1">
-        <p className="text-sm font-medium text-[#142033]">Select the skills you want included in your learning plan.</p>
-        <p className="text-sm font-medium text-[#667085]">
+        <p className="text-sm font-medium text-[#16324A]">Select the skills you want included in your learning plan.</p>
+        <p className="text-sm font-medium text-[#5F7486]">
           {identifiedCount} identified • {selectedCount} selected
         </p>
       </div>
@@ -729,11 +1100,11 @@ export function SkillGapPage() {
       </div>
 
       {retrievedSources.length > 0 && (
-        <details className="text-sm border border-[#DCE7EE] rounded-lg bg-[#FCFDFE]">
-          <summary className="px-4 py-3 cursor-pointer text-[#142033] font-medium select-none">
+        <details className="text-sm rounded-lg border border-[#DCE7EA] bg-white">
+          <summary className="px-4 py-3 cursor-pointer font-medium text-[#16324A] select-none">
             Retrieved sources ({retrievedSources.length})
           </summary>
-          <ul className="px-4 pb-4 pt-1 space-y-1 text-xs text-[#5F6B7A] list-disc list-inside">
+          <ul className="list-inside list-disc space-y-1 px-4 pt-1 pb-4 text-xs text-[#5F7486]">
             {retrievedSources.slice(0, 5).map((src, i) => (
               <li key={i}>{typeof src === 'string' ? src : JSON.stringify(src)}</li>
             ))}
@@ -749,7 +1120,7 @@ export function SkillGapPage() {
       {/* Floating bottom action bar — only over main column (same left offset as sidenav), not over sidenav */}
       <div
         className={cn(
-          'fixed bottom-0 right-0 z-50 h-[70px] border-t border-slate-200 bg-transparent shadow-[0_-4px_24px_rgba(0,0,0,0.08)]',
+          'fixed bottom-0 right-0 z-50 h-[70px] border-t border-[#DCE7EA] bg-transparent shadow-[0_-4px_24px_rgba(22,50,74,0.06)]',
           collapsed ? 'left-16' : 'left-[15rem]',
         )}
       >
@@ -757,7 +1128,12 @@ export function SkillGapPage() {
           <Button type="button" variant="secondary" onClick={cancelAdjust}>
             Cancel
           </Button>
-          <Button type="button" size="lg" onClick={saveAdjustAndReturn} className="px-6 sm:px-8">
+          <Button
+            type="button"
+            size="lg"
+            onClick={saveAdjustAndReturn}
+            className="bg-[#63B3C1] px-6 text-white hover:bg-[#529EAC] active:bg-[#4A8F9C] focus-visible:ring-[#3AA6B9] sm:px-8"
+          >
             Save Changes and Return
           </Button>
         </div>

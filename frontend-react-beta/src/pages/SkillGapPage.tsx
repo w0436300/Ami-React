@@ -4,6 +4,7 @@ import { Button, Toggle } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import { useAuthContext } from '@/context/AuthContext';
 import { useGoalsContext } from '@/context/GoalsContext';
+import { useSidebarCollapse } from '@/context/SidebarCollapseContext';
 import { useAppConfig } from '@/api/endpoints/config';
 import {
   useCreateLearnerProfileWithInfo,
@@ -104,9 +105,9 @@ function SummaryChip({
     <span
       className={cn(
         'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium',
-        tone === 'accent' && 'border-blue-200 bg-blue-50 text-blue-700',
-        tone === 'success' && 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        tone === 'default' && 'border-slate-200 bg-slate-50 text-slate-600',
+        tone === 'accent' && 'border-[#DCE7EE] bg-[#EAF4FB] text-[#2B6F97]',
+        tone === 'success' && 'border-[#DCE7EE] bg-[#E8F6EF] text-[#1F7A52]',
+        tone === 'default' && 'border-[#DCE7EE] bg-[#FCFDFE] text-[#5F6B7A]',
       )}
     >
       {children}
@@ -128,13 +129,13 @@ function LevelSelect({
   disabled?: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
-      <span className="font-medium text-slate-500">{label}</span>
+    <label className="flex items-center gap-2 rounded-lg border border-[#DCE7EE] bg-[#FCFDFE] px-3 py-2 text-xs">
+      <span className="font-medium text-[#5F6B7A]">{label}</span>
       <select
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="min-w-0 bg-transparent text-slate-700 outline-none disabled:cursor-not-allowed"
+        className="min-w-0 bg-transparent text-[#2E3A49] outline-none disabled:cursor-not-allowed"
       >
         {levels.map((level) => (
           <option key={level} value={level}>
@@ -163,12 +164,12 @@ function LevelProgress({
   const width = levels.length > 1 ? `${((end - start) / (levels.length - 1)) * 100}%` : '0%';
 
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3">
+    <div className="rounded-xl border border-[#DCE7EE] bg-[#FCFDFE] px-3 py-3">
       <div className="relative mb-3 px-2">
-        <div className="absolute left-2 right-2 top-[22px] h-1 rounded-full bg-slate-200" />
+        <div className="absolute left-2 right-2 top-[22px] h-1 rounded-full bg-[#E8EEF3]" />
         {end > start && (
           <div
-            className="absolute top-[22px] h-1 rounded-full bg-blue-200"
+            className="absolute top-[22px] h-1 rounded-full bg-[#8EA4BE]"
             style={{ left: `calc(${left} + 8px)`, width }}
           />
         )}
@@ -181,21 +182,21 @@ function LevelProgress({
               <div key={level} className="flex flex-col items-center gap-1 text-center">
                 <div className="h-5 text-[10px]">
                   {isCurrent && isTarget ? (
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-700">Current + Target</span>
+                    <span className="rounded-full bg-[#EAF4FB] px-2 py-0.5 font-medium text-[#2B6F97]">Current + Target</span>
                   ) : isCurrent ? (
-                    <span className="rounded-full bg-slate-200 px-2 py-0.5 font-medium text-slate-700">Current</span>
+                    <span className="rounded-full bg-[#E8EEF3] px-2 py-0.5 font-medium text-[#5F6B7A]">Current</span>
                   ) : isTarget ? (
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-700">Target</span>
+                    <span className="rounded-full bg-[#EAF4FB] px-2 py-0.5 font-medium text-[#2B6F97]">Target</span>
                   ) : null}
                 </div>
                 <div
                   className={cn(
                     'relative z-10 h-3.5 w-3.5 rounded-full border-2 bg-white',
-                    isCurrent && !isTarget && 'border-slate-500',
-                    isTarget && !isCurrent && 'border-blue-500',
-                    isCurrent && isTarget && 'border-blue-600 bg-blue-600',
-                    isBetween && 'border-blue-200 bg-blue-100',
-                    !isCurrent && !isTarget && !isBetween && 'border-slate-300',
+                    isCurrent && !isTarget && 'border-[#8EA4BE]',
+                    isTarget && !isCurrent && 'border-[#2B6F97]',
+                    isCurrent && isTarget && 'border-[#2B6F97] bg-[#2B6F97]',
+                    isBetween && 'border-[#8EA4BE] bg-[#EAF4FB]',
+                    !isCurrent && !isTarget && !isBetween && 'border-[#DCE7EE]',
                   )}
                 />
                 <span className="text-[11px] leading-tight text-slate-500">{formatLevelLabel(level)}</span>
@@ -235,16 +236,16 @@ function SkillCard({
     (skill.original.skill_name ?? (skill.original as unknown as { name?: string }).name ?? '').toString() || 'Skill';
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-4">
+    <div className="rounded-2xl border border-[#DCE7EE] bg-[#FCFDFE] p-4 shadow-[0_1px_3px_rgba(20,32,51,0.06)] space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-slate-800">{title}</h3>
-            <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
+            <h3 className="font-semibold text-[#142033]">{title}</h3>
+            <span className="inline-flex items-center rounded-full bg-[#E8EEF3] px-2.5 py-1 text-[11px] font-medium text-[#2E3A49]">
               Gap {gap}
             </span>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-[#5F6B7A]">
             Current {formatLevelLabel(skill.current_level)} to target {formatLevelLabel(skill.required_level)}
           </p>
         </div>
@@ -286,6 +287,7 @@ function SkillCard({
 export function SkillGapPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { collapsed } = useSidebarCollapse();
   const { userId } = useAuthContext();
   const { setSelectedGoalId, refreshGoals } = useGoalsContext();
   const { data: config } = useAppConfig();
@@ -510,16 +512,16 @@ export function SkillGapPage() {
   return (
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl space-y-6 pb-28">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-        <p className="text-sm text-slate-600">
+      <div className="rounded-2xl border border-[#DCE7EE] bg-[#FCFDFE] p-6 shadow-[0_1px_3px_rgba(20,32,51,0.06)] space-y-4">
+        <p className="text-sm text-[#667085]">
           Based on your goal, we've identified the key skills required and estimated your current level. Review each
           skill below — toggle off any you want to exclude, or adjust if the AI assessment seems off.
         </p>
       </div>
 
       <div className="space-y-1">
-        <p className="text-sm font-medium text-slate-800">Select the skills you want included in your learning plan.</p>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm font-medium text-[#142033]">Select the skills you want included in your learning plan.</p>
+        <p className="text-sm text-[#667085]">
           {identifiedCount} identified • {selectedCount} selected
         </p>
       </div>
@@ -539,11 +541,11 @@ export function SkillGapPage() {
       </div>
 
       {retrievedSources.length > 0 && (
-        <details className="text-sm border border-slate-200 rounded-lg">
-          <summary className="px-4 py-3 cursor-pointer text-slate-600 font-medium select-none">
+        <details className="text-sm border border-[#DCE7EE] rounded-lg bg-[#FCFDFE]">
+          <summary className="px-4 py-3 cursor-pointer text-[#142033] font-medium select-none">
             Retrieved sources ({retrievedSources.length})
           </summary>
-          <ul className="px-4 pb-4 pt-1 space-y-1 text-xs text-slate-500 list-disc list-inside">
+          <ul className="px-4 pb-4 pt-1 space-y-1 text-xs text-[#5F6B7A] list-disc list-inside">
             {retrievedSources.slice(0, 5).map((src, i) => (
               <li key={i}>{typeof src === 'string' ? src : JSON.stringify(src)}</li>
             ))}
@@ -554,34 +556,29 @@ export function SkillGapPage() {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">{error}</div>
       )}
-
-      <div className="sticky bottom-0 z-10 pt-2">
-        <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-slate-800">{selectedCount} skill{selectedCount !== 1 ? 's' : ''} selected</p>
-            <p className="text-xs text-slate-500">
-              {hasGaps
-                ? 'Your selected skills will shape the difficulty and focus of the learning path.'
-                : 'Select at least one skill with a target level above the current level to continue.'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button variant="secondary" onClick={() => navigate('/onboarding')} disabled={isScheduling}>
-              Edit Goal
-            </Button>
-            <Button
-              size="lg"
-              onClick={handleSchedule}
-              loading={isScheduling}
-              disabled={plannedSkills.length === 0 || !hasGaps || isScheduling}
-              className="px-8"
-            >
-              {isScheduling ? 'Creating your profile…' : 'Generate Learning Path'}
-            </Button>
-          </div>
-        </div>
       </div>
+
+      {/* Floating bar only over main column (not over sidenav) */}
+      <div
+        className={cn(
+          'fixed bottom-0 right-0 z-50 h-[70px] border-t border-slate-200 bg-transparent shadow-[0_-4px_24px_rgba(0,0,0,0.08)]',
+          collapsed ? 'left-16' : 'left-[15rem]',
+        )}
+      >
+        <div className="mx-auto flex max-w-7xl items-center justify-end gap-3 bg-[rgba(255,255,255,0.92)] px-4 py-3 sm:px-6 lg:px-8">
+          <Button variant="secondary" onClick={() => navigate('/onboarding')} disabled={isScheduling}>
+            Edit Goal
+          </Button>
+          <Button
+            size="lg"
+            onClick={handleSchedule}
+            loading={isScheduling}
+            disabled={plannedSkills.length === 0 || !hasGaps || isScheduling}
+            className="px-8"
+          >
+            {isScheduling ? 'Creating your profile…' : 'Generate Learning Path'}
+          </Button>
+        </div>
       </div>
     </div>
   );

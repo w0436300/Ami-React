@@ -37,3 +37,13 @@ backend/
 backend/.env
 frontend/
 frontend/.env
+
+# frontend-react: local env + build output (CI builds in Actions)
+frontend-react/.env
+frontend-react/.env.local
+frontend-react/dist
+
+# frontend-react-old (renamed from frontend-react-beta): same as above
+frontend-react-old/.env
+frontend-react-old/.env.local
+frontend-react-old/dist
