@@ -30,6 +30,109 @@ interface LearningPreference {
   tags: string[];
 }
 
+type FslsmDimensions = {
+  fslsm_processing: number;
+  fslsm_perception: number;
+  fslsm_input: number;
+  fslsm_understanding: number;
+};
+
+type PersonaMapping = {
+  name: string;
+  aliases: string[];
+  fslsm_dimensions: FslsmDimensions;
+};
+
+const PERSONA_BY_PREFERENCE_ID: Record<string, PersonaMapping> = {
+  'hands-on': {
+    name: 'Hands-on Explorer',
+    aliases: ['hands on explorer', 'interactive learner'],
+    fslsm_dimensions: {
+      fslsm_processing: -0.7,
+      fslsm_perception: -0.5,
+      fslsm_input: -0.5,
+      fslsm_understanding: -0.5,
+    },
+  },
+  reflective: {
+    name: 'Reflective Reader',
+    aliases: ['reflective learner', 'textual learner'],
+    fslsm_dimensions: {
+      fslsm_processing: 0.7,
+      fslsm_perception: 0.5,
+      fslsm_input: 0.7,
+      fslsm_understanding: 0.5,
+    },
+  },
+  visual: {
+    name: 'Visual Learner',
+    aliases: ['visual'],
+    fslsm_dimensions: {
+      fslsm_processing: -0.2,
+      fslsm_perception: -0.3,
+      fslsm_input: -0.8,
+      fslsm_understanding: -0.3,
+    },
+  },
+  conceptual: {
+    name: 'Conceptual Thinker',
+    aliases: ['conceptual learner', 'concise learner'],
+    fslsm_dimensions: {
+      fslsm_processing: 0.5,
+      fslsm_perception: 0.7,
+      fslsm_input: 0.0,
+      fslsm_understanding: 0.7,
+    },
+  },
+  balanced: {
+    name: 'Balanced Learner',
+    aliases: ['balanced'],
+    fslsm_dimensions: {
+      fslsm_processing: 0.0,
+      fslsm_perception: 0.0,
+      fslsm_input: 0.0,
+      fslsm_understanding: 0.0,
+    },
+  },
+};
+
+function normalizePersonaName(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+}
+
+function resolvePersonaFromPreference(
+  preferenceId: string,
+  personas: Record<string, { fslsm_dimensions?: Record<string, number> }>,
+): { name: string; fslsm_dimensions: Record<string, number> } {
+  const fallback = PERSONA_BY_PREFERENCE_ID[preferenceId] ?? PERSONA_BY_PREFERENCE_ID.balanced;
+  const entries = Object.entries(personas);
+  if (!entries.length) {
+    return fallback;
+  }
+
+  const candidates = [fallback.name, ...fallback.aliases].map(normalizePersonaName);
+  for (const [name, info] of entries) {
+    if (candidates.includes(normalizePersonaName(name))) {
+      return {
+        name,
+        fslsm_dimensions: info.fslsm_dimensions ?? fallback.fslsm_dimensions,
+      };
+    }
+  }
+
+  for (const [name, info] of entries) {
+    const normalized = normalizePersonaName(name);
+    if (candidates.some((candidate) => normalized.includes(candidate) || candidate.includes(normalized))) {
+      return {
+        name,
+        fslsm_dimensions: info.fslsm_dimensions ?? fallback.fslsm_dimensions,
+      };
+    }
+  }
+
+  return fallback;
+}
+
 const LEARNING_PREFERENCES: LearningPreference[] = [
   {
     id: 'hands-on',
@@ -115,16 +218,15 @@ export function OnboardingPage() {
   const handleBeginLearning = useCallback(() => {
     const trimmed = learningGoal.trim();
     if (!trimmed) return;
-    const personaKey = selectedPreferenceId ?? 'balanced';
+    const selectedId = selectedPreferenceId ?? 'balanced';
+    const resolvedPersona = resolvePersonaFromPreference(selectedId, personas);
+    const personaKey = resolvedPersona.name;
     // Build learnerInformation similar to old frontend: persona + optional resume summary
     let learnerInformation = resumeText;
-    if (personas[personaKey]) {
-      const dims = personas[personaKey].fslsm_dimensions;
-      const dimStr = Object.entries(dims)
-        .map(([k, v]) => `${k}=${v}`)
-        .join(', ');
-      learnerInformation = `Learning Persona: ${personaKey} (initial FSLSM: ${dimStr}). ${learnerInformation}`;
-    }
+    const dimStr = Object.entries(resolvedPersona.fslsm_dimensions)
+      .map(([k, v]) => `${k}=${v}`)
+      .join(', ');
+    learnerInformation = `Learning Persona: ${personaKey} (initial FSLSM: ${dimStr}). ${learnerInformation}`;
     // Ensure learnerInformation is never empty so SkillGapPage's guard passes
     if (!learnerInformation) {
       learnerInformation = `Learning goal: ${trimmed}.`;
