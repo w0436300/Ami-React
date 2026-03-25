@@ -23,9 +23,9 @@ import {
 } from '@/api/endpoints/content';
 import { auditContentBiasApi, auditChatbotBiasApi } from '@/api/endpoints/audits';
 import { useChatWithTutor } from '@/api/endpoints/chat';
-import { ContentBiasAuditPanel, ChatbotBiasAuditPanel } from '@/components/ethics';
 import { SessionLoadingPanel } from '@/components/learning/SessionLoadingPanel';
 import type { MasteryEvaluationResponse, ContentSection } from '@/types';
+import { AiAssistantInfo } from '@/components/ethics';
 
 interface LocationState {
   goalId: number;
@@ -838,8 +838,10 @@ export function LearningSessionPage() {
   const isCompleteEnabled = hasMastered;
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
-  const [contentBiasAudit, setContentBiasAudit] = useState<Record<string, unknown> | null>(null);
-  const [chatbotBiasAudit, setChatbotBiasAudit] = useState<Record<string, unknown> | null>(null);
+  const activeGoalRef = useRef(activeGoal);
+  useEffect(() => {
+    activeGoalRef.current = activeGoal;
+  }, [activeGoal]);
 
   const learnerInformationForAudit =
     (activeGoal?.learner_profile as { learner_information?: string } | undefined)?.learner_information ?? '';
@@ -851,8 +853,12 @@ export function LearningSessionPage() {
   const sectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    const currentGoal = activeGoalRef.current;
+    if (!currentGoal) return;
+    if (goalId == null) return;
+
     if (!content) {
-      setContentBiasAudit(null);
+      updateGoal(goalId, { ...currentGoal, content_bias_audit: null });
       return;
     }
     const doc =
@@ -865,20 +871,28 @@ export function LearningSessionPage() {
       learner_information: learnerInformationForAudit,
     })
       .then((r) => {
-        if (!cancelled) setContentBiasAudit(r);
+        if (cancelled) return;
+        const g = activeGoalRef.current;
+        if (!g) return;
+        updateGoal(goalId, { ...g, content_bias_audit: r });
       })
       .catch(() => {
-        if (!cancelled) setContentBiasAudit(null);
+        if (cancelled) return;
+        const g = activeGoalRef.current;
+        if (!g) return;
+        updateGoal(goalId, { ...g, content_bias_audit: null });
       });
     return () => {
       cancelled = true;
     };
-  }, [content, learnerInformationForAudit]);
+  }, [content, learnerInformationForAudit, goalId, updateGoal]);
 
   useEffect(() => {
     setChatMessages([]);
-    setChatbotBiasAudit(null);
-  }, [goalId, sessionIndex]);
+    const g = activeGoalRef.current;
+    if (!g) return;
+    updateGoal(goalId, { ...g, chatbot_bias_audit: null });
+  }, [goalId, sessionIndex, updateGoal]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -902,13 +916,16 @@ export function LearningSessionPage() {
           tutor_responses: res.response,
           learner_information: learnerInformationForAudit,
         });
-        setChatbotBiasAudit(audit);
+        const g = activeGoalRef.current;
+        if (g) updateGoal(goalId, { ...g, chatbot_bias_audit: audit });
       } catch {
-        setChatbotBiasAudit(null);
+        const g = activeGoalRef.current;
+        if (g) updateGoal(goalId, { ...g, chatbot_bias_audit: null });
       }
     } catch {
       setChatMessages((prev) => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error.' }]);
-      setChatbotBiasAudit(null);
+      const g = activeGoalRef.current;
+      if (g) updateGoal(goalId, { ...g, chatbot_bias_audit: null });
     }
   }, [
     chatInput,
@@ -1005,10 +1022,11 @@ export function LearningSessionPage() {
     setContent(null);
     setGenerateError(null);
     setMasteryResult(null);
-    setContentBiasAudit(null);
+    const g = activeGoalRef.current;
+    if (g) updateGoal(goalId, { ...g, content_bias_audit: null, chatbot_bias_audit: null });
     hasTriggeredGenRef.current = false;
     deleteMutation.mutate({ userId, goalId, sessionIndex });
-  }, [userId, goalId, sessionIndex, sessionActivityMutation, deleteMutation]);
+  }, [userId, goalId, sessionIndex, sessionActivityMutation, deleteMutation, updateGoal]);
 
   const handleComplete = useCallback(async () => {
     if (!userId || goalId == null || sessionIndex == null) return;
@@ -1089,7 +1107,7 @@ export function LearningSessionPage() {
     <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
       <div className="pt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] items-start">
         <div className="min-w-0 space-y-5 pl-2">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start justify-between gap-4">
             <div className="space-y-1 min-w-0">
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <button type="button" onClick={handleBack} className="hover:text-slate-600 transition-colors">Learning path</button>
@@ -1097,6 +1115,13 @@ export function LearningSessionPage() {
                 <span className="text-slate-500">Session {sessionIndex + 1}</span>
               </div>
               <h2 className="text-2xl font-bold tracking-tight text-slate-900">{sessionTitle}</h2>
+              <div className="pt-2">
+                <AiAssistantInfo
+                  label="AI-assisted"
+                  shortExplanation="Generated with AI to help you learn."
+                  explanation="This session is generated by an AI system. It may reflect biases present in training data or source materials. If you notice content that seems biased or inappropriate, you can report it so we can improve."
+                />
+              </div>
               <p className="text-sm text-slate-500">
                 Work through each section, then take the quiz to complete this session.
               </p>
@@ -1128,8 +1153,6 @@ export function LearningSessionPage() {
               <p className="text-sm font-medium text-purple-800">This session includes enhanced visual elements.</p>
             </div>
           )}
-
-          <ContentBiasAuditPanel audit={contentBiasAudit} />
 
           {/* ── Progress bar ── */}
           {sections.length > 1 && !isOnQuiz && (
@@ -1526,8 +1549,13 @@ export function LearningSessionPage() {
               Ready
             </span>
           </div>
-          <div className="mt-3 space-y-2">
-            <ChatbotBiasAuditPanel audit={chatbotBiasAudit} />
+          <div className="mt-3">
+            <AiAssistantInfo
+              label="AI-assisted"
+              shortExplanation="AI chat responses may reflect training data."
+              explanation="This chat is generated by an AI system. It may reflect biases present in training data or source materials. If you notice content that seems biased or inappropriate, you can report it so we can improve."
+              transparencyHref="/ai-transparency"
+            />
           </div>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">

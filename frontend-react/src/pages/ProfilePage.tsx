@@ -1073,6 +1073,15 @@ export function ProfilePage() {
 
               <div className="mt-4 w-full text-left">
                 <h2 className="text-lg font-semibold leading-tight text-slate-900">{userId ?? 'Learner'}</h2>
+                {activeGoal?.learner_profile && (
+                  <div className="mt-2">
+                    <ProfileFairnessPanel
+                      fairness={profileFairness ?? null}
+                      disclaimerOnly
+                      transparencyHref="/ai-transparency"
+                    />
+                  </div>
+                )}
                 {goalDisplayName ? (
                   <p className="mt-1 text-xs font-medium text-primary-700 line-clamp-2">{goalDisplayName}</p>
                 ) : null}
@@ -1230,9 +1239,7 @@ export function ProfilePage() {
 
         {/* Right: dynamic / interactive content — grid column aligns top edge with aside */}
         <div className="min-w-0 space-y-6 lg:min-w-0">
-          {activeGoal?.learner_profile && (
-            <ProfileFairnessPanel fairness={profileFairness ?? null} disclaimerOnly />
-          )}
+          {/* AI-assisted disclaimer is shown in the left sidebar above. */}
 
         {/* ACTIVITY SUMMARY — horizontal metrics + vertical dividers; tight label/value gap */}
         <section className="bg-white rounded-xl border border-slate-200 p-5">

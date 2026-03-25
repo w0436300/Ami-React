@@ -5,6 +5,7 @@ export {
   ProfileFairnessPanel,
 } from './EthicsPanels';
 export { OnboardingDataUseCollapsible } from './OnboardingDataUseCollapsible';
+export { AiAssistantInfo } from './AiAssistantInfo';
 export {
   FALLBACK_CONTENT_BIAS_DISCLAIMER,
   FALLBACK_PROFILE_FAIRNESS_DISCLAIMER,

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/cn';
+import { AiAssistantInfo } from './AiAssistantInfo';
 import {
   FALLBACK_CONTENT_BIAS_DISCLAIMER,
   FALLBACK_PROFILE_FAIRNESS_DISCLAIMER,
@@ -8,10 +9,23 @@ function severityIcon(severity: string): string {
   return ({ low: '🟡', medium: '🟠', high: '🔴' } as const)[severity as 'low' | 'medium' | 'high'] ?? '🟡';
 }
 
-export function ContentBiasAuditPanel({ audit }: { audit: Record<string, unknown> | null }) {
+export function ContentBiasAuditPanel({
+  audit,
+  /** When true, show only the AI-assisted disclaimer (no risk/flag counts/details). */
+  disclaimerOnly = false,
+  transparencyHref,
+}: {
+  audit: Record<string, unknown> | null;
+  disclaimerOnly?: boolean;
+  transparencyHref?: string;
+}) {
   const disclaimer =
     (typeof audit?.ethical_disclaimer === 'string' && audit.ethical_disclaimer.trim()) ||
     FALLBACK_CONTENT_BIAS_DISCLAIMER;
+
+  if (disclaimerOnly) {
+    return <AiAssistantInfo explanation={disclaimer} transparencyHref={transparencyHref} />;
+  }
 
   const risk = typeof audit?.overall_bias_risk === 'string' ? audit.overall_bias_risk : 'low';
   const biasFlags = Array.isArray(audit?.bias_flags) ? audit.bias_flags : [];
@@ -19,12 +33,7 @@ export function ContentBiasAuditPanel({ audit }: { audit: Record<string, unknown
 
   return (
     <div className="space-y-3">
-      <div
-        className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-slate-800 shadow-sm"
-        role="status"
-      >
-        {disclaimer}
-      </div>
+      <AiAssistantInfo explanation={disclaimer} transparencyHref={transparencyHref} />
 
       {audit && (risk === 'medium' || risk === 'high') && (
         <div
@@ -263,10 +272,12 @@ export function ProfileFairnessPanel({
   className,
   /** When true, only the ethical disclaimer box is shown (no fairness risk banner or details). */
   disclaimerOnly = false,
+  transparencyHref,
 }: {
   fairness: Record<string, unknown> | null | undefined;
   className?: string;
   disclaimerOnly?: boolean;
+  transparencyHref?: string;
 }) {
   const disclaimer =
     (typeof fairness?.ethical_disclaimer === 'string' && fairness.ethical_disclaimer.trim()) ||
@@ -283,13 +294,7 @@ export function ProfileFairnessPanel({
 
   return (
     <div className={cn('space-y-3', className)}>
-      <section
-        className="rounded-xl border border-sky-200 bg-sky-50 px-4 pt-4 pb-3 text-sm text-slate-800 shadow-sm"
-        role="status"
-      >
-        <p className="text-xs font-semibold uppercase tracking-wide text-sky-900/80">Ethical disclaimer</p>
-        <p className="mt-2 text-sm leading-relaxed text-slate-800">{disclaimer}</p>
-      </section>
+      <AiAssistantInfo explanation={disclaimer} transparencyHref={transparencyHref} showShortExplanation={!disclaimerOnly} />
 
       {showFairnessFollowUp && (
         <div className="space-y-3">

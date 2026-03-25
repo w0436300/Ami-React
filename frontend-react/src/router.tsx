@@ -11,6 +11,7 @@ import { LearningSessionPage } from '@/pages/LearningSessionPage';
 import { SkillGapPage } from '@/pages/SkillGapPage';
 import { RefineGoalExamplePage } from '@/pages/RefineGoalExamplePage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
+import { AiTransparencyPage } from '@/pages/AiTransparencyPage';
 import { useAuthContext } from '@/context/AuthContext';
 import { useGoalsContext } from '@/context/GoalsContext';
 import { SidebarCollapseProvider } from '@/context/SidebarCollapseContext';
@@ -94,6 +95,7 @@ export const router = createBrowserRouter(
             { path: '/dashboard', element: <HomePage /> },
             { path: '/goals', element: <GoalsPage /> },
             { path: '/profile', element: <ProfilePage /> },
+            { path: '/ai-transparency', element: <AiTransparencyPage /> },
             { path: '/learning-path', element: <LearningPathPage /> },
             { path: '/skill-gap', element: <SkillGapPage /> },
             { path: '/analytics', element: <AnalyticsPage /> },
